@@ -2,9 +2,25 @@
 
 Resolve email providers and IMAP/SMTP settings from any email address or domain. Zero npm dependencies.
 
-Every email domain has DNS MX records that point to the mail server handling its email. `atef.dev` might point to `smtp.google.com`, meaning it uses Google Workspace. `noor.sh` might point to `mx.zoho.com`, meaning Zoho. Mailintel reads these MX records via DNS-over-HTTPS (no system DNS needed), matches them against known provider patterns, and returns the full IMAP/SMTP connection settings you need to connect - host, port, SSL, and username.
+If you're building an app where users connect their email - a CRM, helpdesk, mail client, or anything that sends/receives on their behalf - you normally have to ask them to manually enter their SMTP host, IMAP port, SSL toggle, and username. Mailintel does this automatically. Give it an email or domain and it returns everything you need to connect.
 
-For well-known domains like `gmail.com` or `outlook.com`, it skips the network entirely and returns settings instantly from a built-in map.
+### How it gets the data
+
+Every email domain has **MX records** in DNS that say which mail server handles its email. `atef.dev` might point to `smtp.google.com` (Google Workspace), `noor.sh` might point to `mx.zoho.com` (Zoho).
+
+Mailintel queries these MX records using **DNS-over-HTTPS** - plain HTTPS requests to public DNS resolvers, not system-level DNS calls. This means it works in serverless functions, edge runtimes, browsers, or anywhere `fetch` is available. No native modules, no UDP sockets, no special permissions.
+
+It hits up to two external services per uncached lookup:
+
+| Service | URL | What it returns |
+|---------|-----|-----------------|
+| **Cloudflare DNS** (default) | `cloudflare-dns.com/dns-query?name=atef.dev&type=MX` | MX records - which mail server handles the domain (e.g., `smtp.google.com`) |
+| **Google DNS** (alternative) | `dns.google/resolve?name=atef.dev&type=MX` | Same MX records, different resolver |
+| **Thunderbird ISPDB** (fallback) | `autoconfig.thunderbird.net/v1.1/{domain}` | IMAP/SMTP connection settings (host, port, SSL) from Mozilla's open database |
+
+Once Mailintel knows the MX server, it matches it against ~30 known provider patterns (e.g., `*.google.com` = Google, `*.zoho.com` = Zoho) and returns the IMAP/SMTP settings from a built-in provider map. If the provider isn't recognized, it falls back to ISPDB.
+
+For well-known domains like `gmail.com` or `outlook.com`, it skips the network entirely and returns settings instantly from a built-in map of ~50 domains.
 
 ## Install
 
@@ -62,7 +78,7 @@ lookup.clearCache();
 | `timeout` | `number` | `5000` | Network request timeout (ms) |
 | `cache` | `boolean` | `true` | In-memory domain caching |
 | `cacheTtl` | `number` | `1800000` | Cache TTL in ms (30 min) |
-| `mxLookup` | `boolean \| 'google'` | `true` | `true` = Cloudflare, `'google'` = Google, `false` = disabled |
+| `mxLookup` | `boolean \| 'cloudflare' \| 'google'` | `true` | `true` or `'cloudflare'` = Cloudflare DNS, `'google'` = Google DNS, `false` = disabled |
 | `ispdb` | `boolean` | `true` | Thunderbird ISPDB fallback |
 | `fetch` | `typeof fetch` | `globalThis.fetch` | Custom fetch (useful for proxies or testing) |
 | `providers` | `Record<string, ProviderOverride>` | - | Domain-to-provider overrides |
@@ -103,7 +119,7 @@ mailintel ahmed@atef.dev --json               # machine-readable JSON
 |------|-------------|
 | `--json` | Output raw JSON |
 | `--timeout <ms>` | Network timeout (default: 5000) |
-| `--resolver google` | Use Google DNS instead of Cloudflare |
+| `--resolver <name>` | DNS resolver: `cloudflare` (default) or `google` |
 | `--no-cache` | Disable caching |
 | `--no-ispdb` | Skip Thunderbird ISPDB fallback |
 | `-h, --help` | Show help |

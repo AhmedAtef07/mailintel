@@ -51,7 +51,7 @@ export interface MailintelOptions {
   timeout?: number;
   cache?: boolean;
   cacheTtl?: number;
-  mxLookup?: boolean | 'google';
+  mxLookup?: boolean | 'cloudflare' | 'google';
   ispdb?: boolean;
   fetch?: typeof globalThis.fetch;
   providers?: Record<string, ProviderOverride>;

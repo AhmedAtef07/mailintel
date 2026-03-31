@@ -1,8 +1,8 @@
 # Mailintel
 
-Resolve email providers and IMAP/SMTP settings from any email address. Zero npm dependencies.
+Resolve email providers and IMAP/SMTP settings from any email address or domain. Zero npm dependencies.
 
-Most email setup flows make users manually enter SMTP hosts, IMAP ports, and SSL settings. Mailintel takes an email address - even custom domains like `ceo@acme-corp.com` - and returns the complete server configuration automatically.
+Most email setup flows make users manually enter SMTP hosts, IMAP ports, and SSL settings. Mailintel takes an email address or domain - even custom domains like `atef.dev` - and returns the complete server configuration automatically.
 
 ## Install
 
@@ -13,55 +13,65 @@ npm install mailintel
 Or use directly from the command line:
 
 ```bash
-npx mailintel user@gmail.com
+npx mailintel ahmed@atef.dev
 ```
 
 ## CLI
 
 ```bash
-$ mailintel ceo@acme-corp.com
+$ mailintel ahmed@atef.dev
 
-ceo@acme-corp.com
+ahmed@atef.dev
 
-  provider      zoho
-  domain        acme-corp.com
+  provider      google
+  domain        atef.dev
   type          business
   confidence    high
-  mx            mx.zoho.com
+  mx            smtp.google.com
   source        mx-lookup
 
-  IMAP  imappro.zoho.com:993  SSL
-  SMTP  smtppro.zoho.com:465  SSL
-  User  ceo@acme-corp.com
+  IMAP  imap.gmail.com:993  SSL
+  SMTP  smtp.gmail.com:465  SSL
+  Username  ahmed@atef.dev
 ```
 
-Multiple emails, JSON output, and options:
+Supports multiple emails, domain-only lookups, and JSON output:
 
 ```bash
-mailintel user@gmail.com ceo@corp.com          # multiple emails
-mailintel user@example.com --json              # machine-readable JSON
-mailintel user@example.com --resolver google   # use Google DNS instead of Cloudflare
-mailintel user@example.com --timeout 3000      # custom timeout
-mailintel user@example.com --no-ispdb          # skip ISPDB fallback
+mailintel user@gmail.com ceo@corp.com         # multiple emails
+mailintel atef.dev                            # domain-only (no email needed)
+mailintel ahmed@atef.dev --json               # machine-readable JSON
 ```
+
+### CLI options
+
+| Flag | Description |
+|------|-------------|
+| `--json` | Output raw JSON |
+| `--timeout <ms>` | Network timeout (default: 5000) |
+| `--resolver google` | Use Google DNS instead of Cloudflare |
+| `--no-cache` | Disable caching |
+| `--no-ispdb` | Skip Thunderbird ISPDB fallback |
+| `-h, --help` | Show help |
+| `-v, --version` | Show version |
 
 ## API
 
 ```typescript
 import { mailintel } from 'mailintel';
 
-const result = await mailintel('ceo@acme-corp.com');
-// result.provider             => 'zoho'
-// result.connection.imap      => { host: 'imappro.zoho.com', port: 993, secure: true }
-// result.connection.username  => 'ceo@acme-corp.com'
+const result = await mailintel('ahmed@atef.dev');
+// result.provider             => 'google'
+// result.connection.imap      => { host: 'imap.gmail.com', port: 993, secure: true }
+// result.connection.username  => 'ahmed@atef.dev'
 // result.type                 => 'business'
 // result.confidence           => 'high'
 ```
 
-Works with arrays too:
+Works with arrays and domain-only input too:
 
 ```typescript
-const results = await mailintel(['user@gmail.com', 'ceo@corp.com']);
+const results = await mailintel(['user@gmail.com', 'atef.dev']);
 ```
 
 ## How it works

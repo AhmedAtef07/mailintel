@@ -1,0 +1,59 @@
+{
+  "name": "mailintel",
+  "version": "0.1.0",
+  "description": "Email domain intelligence. Takes any email address, resolves the provider, returns IMAP/SMTP connection settings. Supports custom domains via MX lookups.",
+  "author": "Ahmed Atef <ahmed@atef.dev>",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run build && npm run test"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^2.0.0"
+  },
+  "keywords": [
+    "email",
+    "smtp",
+    "imap",
+    "provider",
+    "mx",
+    "autoconfig",
+    "email-settings",
+    "mail-server",
+    "dns",
+    "mx-lookup"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AhmedAtef07/mailintel.git"
+  },
+  "bugs": {
+    "url": "https://github.com/AhmedAtef07/mailintel/issues"
+  },
+  "homepage": "https://github.com/AhmedAtef07/mailintel#readme"
+}

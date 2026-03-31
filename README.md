@@ -2,7 +2,9 @@
 
 Resolve email providers and IMAP/SMTP settings from any email address or domain. Zero npm dependencies.
 
-Most email setup flows make users manually enter SMTP hosts, IMAP ports, and SSL settings. Mailintel takes an email address or domain - even custom domains like `atef.dev` - and returns the complete server configuration automatically.
+Every email domain has DNS MX records that point to the mail server handling its email. `atef.dev` might point to `smtp.google.com`, meaning it uses Google Workspace. `noor.sh` might point to `mx.zoho.com`, meaning Zoho. Mailintel reads these MX records via DNS-over-HTTPS (no system DNS needed), matches them against known provider patterns, and returns the full IMAP/SMTP connection settings you need to connect - host, port, SSL, and username.
+
+For well-known domains like `gmail.com` or `outlook.com`, it skips the network entirely and returns settings instantly from a built-in map.
 
 ## Install
 
@@ -10,17 +12,69 @@ Most email setup flows make users manually enter SMTP hosts, IMAP ports, and SSL
 npm install mailintel
 ```
 
-Or use directly from the command line:
+## API
+
+```typescript
+import { mailintel } from 'mailintel';
+
+// With an email - username is resolved automatically
+const result = await mailintel('ahmed@atef.dev');
+// result.provider             => 'google'
+// result.connection.imap      => { host: 'imap.gmail.com', port: 993, secure: true }
+// result.connection.username  => 'ahmed@atef.dev'
+// result.type                 => 'business'
+// result.confidence           => 'high'
+
+// With just a domain - same result, username stays as template
+const result = await mailintel('atef.dev');
+// result.connection.username  => '%EMAILADDRESS%'
+
+// Multiple inputs at once
+const results = await mailintel(['ahmed@atef.dev', 'noor.sh', 'user@gmail.com']);
+```
+
+### Factory
+
+Use `createMailintel()` for reusable config, custom overrides, or a shared cache:
+
+```typescript
+import { createMailintel } from 'mailintel';
+
+const lookup = createMailintel({
+  timeout: 3000,
+  providers: {
+    'megacorp.io': {
+      provider: 'internal',
+      imap: { host: 'imap.megacorp.io', port: 993, secure: true },
+      smtp: { host: 'smtp.megacorp.io', port: 465, secure: true },
+    },
+  },
+});
+
+await lookup('admin@megacorp.io');  // uses override, no network call
+lookup.clearCache();
+```
+
+### Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `timeout` | `number` | `5000` | Network request timeout (ms) |
+| `cache` | `boolean` | `true` | In-memory domain caching |
+| `cacheTtl` | `number` | `1800000` | Cache TTL in ms (30 min) |
+| `mxLookup` | `boolean \| 'google'` | `true` | `true` = Cloudflare, `'google'` = Google, `false` = disabled |
+| `ispdb` | `boolean` | `true` | Thunderbird ISPDB fallback |
+| `fetch` | `typeof fetch` | `globalThis.fetch` | Custom fetch (useful for proxies or testing) |
+| `providers` | `Record<string, ProviderOverride>` | - | Domain-to-provider overrides |
+| `mxOverrides` | `Record<string, ProviderOverride>` | - | MX suffix-to-provider overrides |
+
+## CLI
 
 ```bash
 npx mailintel ahmed@atef.dev
 ```
 
-## CLI
-
-```bash
-$ mailintel ahmed@atef.dev
-
+```
 ahmed@atef.dev
 
   provider      google
@@ -38,8 +92,8 @@ ahmed@atef.dev
 Supports multiple emails, domain-only lookups, and JSON output:
 
 ```bash
-mailintel user@gmail.com ceo@corp.com         # multiple emails
-mailintel atef.dev                            # domain-only (no email needed)
+mailintel user@gmail.com ceo@noor.sh          # multiple emails
+mailintel atef.dev                            # domain-only lookup
 mailintel ahmed@atef.dev --json               # machine-readable JSON
 ```
 
@@ -55,30 +109,11 @@ mailintel ahmed@atef.dev --json               # machine-readable JSON
 | `-h, --help` | Show help |
 | `-v, --version` | Show version |
 
-## API
-
-```typescript
-import { mailintel } from 'mailintel';
-
-const result = await mailintel('ahmed@atef.dev');
-// result.provider             => 'google'
-// result.connection.imap      => { host: 'imap.gmail.com', port: 993, secure: true }
-// result.connection.username  => 'ahmed@atef.dev'
-// result.type                 => 'business'
-// result.confidence           => 'high'
-```
-
-Works with arrays and domain-only input too:
-
-```typescript
-const results = await mailintel(['user@gmail.com', 'atef.dev']);
-```
-
 ## How it works
 
 ```
                      ┌─────────────────┐
-                     │  user@domain.com │
+                     │  ahmed@atef.dev  │
                      └────────┬────────┘
                               │
                      ┌────────▼────────┐
@@ -124,11 +159,11 @@ const results = await mailintel(['user@gmail.com', 'atef.dev']);
 
 **Network calls**: at most 2 HTTP requests per uncached lookup - one DNS-over-HTTPS query and one ISPDB fetch. Known domains (gmail.com, outlook.com, etc.) resolve instantly with zero network calls.
 
-## Result
+## Result type
 
 ```typescript
 interface MailintelResult {
-  email: string;
+  email: string;                 // input email, or '' for domain-only lookups
   domain: string;
   provider: string | null;       // 'google', 'microsoft', 'zoho', etc.
   mx: string | null;             // primary MX hostname
@@ -138,7 +173,7 @@ interface MailintelResult {
   connection: {                  // null when settings can't be determined
     imap: { host: string; port: number; secure: boolean };
     smtp: { host: string; port: number; secure: boolean };
-    username: string;            // resolved: 'ceo@acme-corp.com'
+    username: string;            // resolved: 'ahmed@atef.dev'
     usernameTemplate: string;    // raw template: '%EMAILADDRESS%'
   } | null;
   confidence: 'high' | 'medium' | 'low';
@@ -149,52 +184,17 @@ interface MailintelResult {
 
 ### Username
 
-`username` is the resolved value you pass directly to the mail server - no extra work needed.
+`username` is the resolved value you pass directly to the mail server. When the input is a domain (no email), it stays as the raw template since there's no email to resolve.
 
-`usernameTemplate` is the raw ISPDB template, useful if you're building a config UI or need to display the pattern. Templates follow the [Thunderbird ISPDB convention](https://wiki.mozilla.org/Thunderbird:Autoconfiguration:ConfigFileFormat):
+`usernameTemplate` is the raw template, useful if you're building a config UI. Templates follow the [Thunderbird ISPDB convention](https://wiki.mozilla.org/Thunderbird:Autoconfiguration:ConfigFileFormat):
 
 | Template | Resolves to | Used by |
 |----------|------------|---------|
-| `%EMAILADDRESS%` | `atef@example.com` | Nearly all modern providers |
-| `%EMAILLOCALPART%` | `atef` | Some older/self-hosted setups |
-| `%EMAILDOMAIN%` | `example.com` | Rare |
+| `%EMAILADDRESS%` | `ahmed@atef.dev` | Nearly all modern providers |
+| `%EMAILLOCALPART%` | `ahmed` | Some older/self-hosted setups |
+| `%EMAILDOMAIN%` | `atef.dev` | Rare |
 
-All built-in providers use `%EMAILADDRESS%`. The ISPDB fallback may return any of the three, depending on what Thunderbird's database has for that provider.
-
-## Factory
-
-Use `createMailintel()` when you need custom config, domain overrides, or a shared cache:
-
-```typescript
-import { createMailintel } from 'mailintel';
-
-const lookup = createMailintel({
-  timeout: 3000,
-  providers: {
-    'mycompany.com': {
-      provider: 'internal',
-      imap: { host: 'imap.mycompany.com', port: 993, secure: true },
-      smtp: { host: 'smtp.mycompany.com', port: 465, secure: true },
-    },
-  },
-});
-
-await lookup('user@mycompany.com');  // uses override, no network call
-lookup.clearCache();
-```
-
-## Options
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `timeout` | `number` | `5000` | Network request timeout (ms) |
-| `cache` | `boolean` | `true` | In-memory domain caching |
-| `cacheTtl` | `number` | `1800000` | Cache TTL in ms (30 min) |
-| `mxLookup` | `boolean \| 'google'` | `true` | `true` = Cloudflare, `'google'` = Google, `false` = disabled |
-| `ispdb` | `boolean` | `true` | Thunderbird ISPDB fallback |
-| `fetch` | `typeof fetch` | `globalThis.fetch` | Custom fetch (useful for proxies or testing) |
-| `providers` | `Record<string, ProviderOverride>` | - | Domain-to-provider overrides |
-| `mxOverrides` | `Record<string, ProviderOverride>` | - | MX suffix-to-provider overrides |
+All built-in providers use `%EMAILADDRESS%`. The ISPDB fallback may return any of the three depending on what Thunderbird's database has for that provider.
 
 ## Supported providers
 

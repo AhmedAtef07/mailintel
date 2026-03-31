@@ -1,4 +1,4 @@
-import { MailintelOptions, MailintelResult, ConnectionInfo } from './types';
+import { MailintelOptions, MailintelResult, ConnectionInfo, RawConnectionInfo } from './types';
 import { Cache } from './cache';
 import { lookupMx } from './dns';
 import { lookupIspdb } from './ispdb';
@@ -7,18 +7,33 @@ import { KNOWN_MX } from './data/mx';
 import { KNOWN_PROVIDERS, REGIONAL_PROVIDERS } from './data/providers';
 import { FREE_DOMAINS } from './data/free';
 
+function resolveUsername(template: string, email: string, domain: string): string {
+  return template
+    .replace('%EMAILADDRESS%', email)
+    .replace('%EMAILLOCALPART%', email.split('@')[0] ?? '')
+    .replace('%EMAILDOMAIN%', domain);
+}
+
+function resolveConnection(raw: RawConnectionInfo, email: string, domain: string): ConnectionInfo {
+  return {
+    imap: raw.imap,
+    smtp: raw.smtp,
+    username: email ? resolveUsername(raw.username, email, domain) : raw.username,
+    usernameTemplate: raw.username,
+  };
+}
+
 export async function mailintelCore(
-  email: string,
+  input: string,
   options: MailintelOptions,
   cache: Cache<MailintelResult> | null,
   cacheTtl: number,
 ): Promise<MailintelResult> {
-  const atIndex = email.lastIndexOf('@');
-  if (atIndex === -1) {
-    return emptyResult(email, '');
-  }
+  const atIndex = input.lastIndexOf('@');
+  const isDomainOnly = atIndex === -1;
+  const email = isDomainOnly ? '' : input;
+  const domain = isDomainOnly ? input.toLowerCase() : input.slice(atIndex + 1).toLowerCase();
 
-  const domain = email.slice(atIndex + 1).toLowerCase();
   if (!domain) {
     return emptyResult(email, '');
   }
@@ -42,11 +57,11 @@ export async function mailintelCore(
       type: FREE_DOMAINS.has(domain) ? 'free' : 'business',
       isFree: FREE_DOMAINS.has(domain),
       hasMx: false,
-      connection: {
-        imap: override.imap,
-        smtp: override.smtp,
-        username: override.username ?? '%EMAILADDRESS%',
-      },
+      connection: resolveConnection(
+        { imap: override.imap, smtp: override.smtp, username: override.username ?? '%EMAILADDRESS%' },
+        email,
+        domain,
+      ),
       confidence: 'high',
       source: 'override',
       raw: { mx: null, dns: null, ispdb: null },
@@ -67,7 +82,7 @@ export async function mailintelCore(
       type: FREE_DOMAINS.has(domain) ? 'free' : 'business',
       isFree: FREE_DOMAINS.has(domain),
       hasMx: false,
-      connection: connection ? { ...connection } : null,
+      connection: connection ? resolveConnection(connection, email, domain) : null,
       confidence: 'high',
       source: 'known-domain',
       raw: { mx: null, dns: null, ispdb: null },
@@ -122,11 +137,11 @@ export async function mailintelCore(
           type: FREE_DOMAINS.has(domain) ? 'free' : 'business',
           isFree: FREE_DOMAINS.has(domain),
           hasMx: true,
-          connection: {
-            imap: override.imap,
-            smtp: override.smtp,
-            username: override.username ?? '%EMAILADDRESS%',
-          },
+          connection: resolveConnection(
+            { imap: override.imap, smtp: override.smtp, username: override.username ?? '%EMAILADDRESS%' },
+            email,
+            domain,
+          ),
           confidence: 'high',
           source: 'mx-lookup',
           raw: { mx: mxRecords, dns: dnsRaw, ispdb: null },
@@ -150,7 +165,7 @@ export async function mailintelCore(
   }
 
   if (mxProvider) {
-    let connection: ConnectionInfo | null = KNOWN_PROVIDERS[mxProvider] ?? null;
+    let connection: RawConnectionInfo | null = KNOWN_PROVIDERS[mxProvider] ?? null;
     let ispdbRaw: string | null = null;
     let confidence: 'high' | 'medium' | 'low' = connection ? 'high' : 'low';
 
@@ -192,7 +207,7 @@ export async function mailintelCore(
       type: FREE_DOMAINS.has(domain) ? 'free' : 'business',
       isFree: FREE_DOMAINS.has(domain),
       hasMx: true,
-      connection: connection ? { ...connection } : null,
+      connection: connection ? resolveConnection(connection, email, domain) : null,
       confidence,
       source: 'mx-lookup',
       raw: { mx: mxRecords, dns: dnsRaw, ispdb: ispdbRaw },
@@ -202,7 +217,7 @@ export async function mailintelCore(
   }
 
   // No known MX match - try ISPDB
-  let connection: ConnectionInfo | null = null;
+  let connection: RawConnectionInfo | null = null;
   let ispdbRaw: string | null = null;
 
   if (options.ispdb !== false) {
@@ -222,7 +237,7 @@ export async function mailintelCore(
     type: FREE_DOMAINS.has(domain) ? 'free' : 'business',
     isFree: FREE_DOMAINS.has(domain),
     hasMx: true,
-    connection,
+    connection: connection ? resolveConnection(connection, email, domain) : null,
     confidence: connection ? 'medium' : 'low',
     source: connection ? 'mx-lookup' : null,
     raw: { mx: mxRecords, dns: dnsRaw, ispdb: ispdbRaw },

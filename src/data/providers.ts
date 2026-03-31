@@ -1,6 +1,6 @@
-import { ConnectionInfo } from '../types';
+import { RawConnectionInfo } from '../types';
 
-export const KNOWN_PROVIDERS: Record<string, ConnectionInfo> = {
+export const KNOWN_PROVIDERS: Record<string, RawConnectionInfo> = {
   google: {
     imap: { host: 'imap.gmail.com', port: 993, secure: true },
     smtp: { host: 'smtp.gmail.com', port: 465, secure: true },

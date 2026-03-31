@@ -4,10 +4,17 @@ export interface ServerConfig {
   secure: boolean;
 }
 
+export interface RawConnectionInfo {
+  imap: ServerConfig;
+  smtp: ServerConfig;
+  username: string;
+}
+
 export interface ConnectionInfo {
   imap: ServerConfig;
   smtp: ServerConfig;
   username: string;
+  usernameTemplate: string;
 }
 
 export interface MxRecord {

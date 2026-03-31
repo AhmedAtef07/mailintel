@@ -61,6 +61,8 @@ describe('mailintel', () => {
     expect(r.connection).not.toBeNull();
     expect(r.connection!.imap.host).toBe('imap.gmail.com');
     expect(r.connection!.smtp.host).toBe('smtp.gmail.com');
+    expect(r.connection!.username).toBe('user@gmail.com');
+    expect(r.connection!.usernameTemplate).toBe('%EMAILADDRESS%');
   });
 
   it('should resolve custom domain via MX lookup', async () => {
@@ -203,11 +205,16 @@ describe('mailintel', () => {
     expect(dnsCallCount).toBe(2);
   });
 
-  it('should handle invalid email gracefully', async () => {
-    const mi = createMailintel();
-    const result = (await mi('notanemail')) as any;
-    expect(result.provider).toBeNull();
-    expect(result.domain).toBe('');
+  it('should treat input without @ as domain', async () => {
+    const fetch = mockFetchForMx(['10 mx.zoho.com.']);
+    const mi = createMailintel({ fetch });
+    const result = (await mi('customdomain.com')) as any;
+
+    expect(result.email).toBe('');
+    expect(result.domain).toBe('customdomain.com');
+    expect(result.provider).toBe('zoho');
+    expect(result.connection.username).toBe('%EMAILADDRESS%');
+    expect(result.connection.usernameTemplate).toBe('%EMAILADDRESS%');
   });
 
   it('clearCache should work', async () => {

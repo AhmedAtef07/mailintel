@@ -20,6 +20,9 @@
     "README.md",
     "LICENSE"
   ],
+  "bin": {
+    "mailintel": "./dist/cli.js"
+  },
   "sideEffects": false,
   "engines": {
     "node": ">=18"

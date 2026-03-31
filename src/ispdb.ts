@@ -1,4 +1,4 @@
-import { ConnectionInfo } from './types';
+import { RawRawConnectionInfo } from './types';
 
 const ISPDB_URL = 'https://autoconfig.thunderbird.net/v1.1';
 
@@ -8,7 +8,7 @@ export async function lookupIspdb(
     timeout?: number;
     fetch?: typeof globalThis.fetch;
   } = {},
-): Promise<{ connection: ConnectionInfo | null; raw: string | null }> {
+): Promise<{ connection: RawConnectionInfo | null; raw: string | null }> {
   const timeout = options.timeout ?? 5000;
   const fetchFn = options.fetch ?? globalThis.fetch;
   const url = `${ISPDB_URL}/${encodeURIComponent(domain)}`;
@@ -33,7 +33,7 @@ export async function lookupIspdb(
   }
 }
 
-function parseIspdbXml(xml: string): ConnectionInfo | null {
+function parseIspdbXml(xml: string): RawConnectionInfo | null {
   const imapMatch = xml.match(/<incomingServer type="imap">([\s\S]*?)<\/incomingServer>/);
   const smtpMatch = xml.match(/<outgoingServer type="smtp">([\s\S]*?)<\/outgoingServer>/);
 

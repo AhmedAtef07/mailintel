@@ -1,6 +1,6 @@
 # Mailintel
 
-Resolve email providers and IMAP/SMTP settings from any email address. Zero dependencies.
+Resolve email providers and IMAP/SMTP settings from any email address. Zero npm dependencies.
 
 Most email setup flows make users manually enter SMTP hosts, IMAP ports, and SSL settings. Mailintel takes an email address - even custom domains like `ceo@acme-corp.com` - and returns the complete server configuration automatically.
 
@@ -10,16 +10,52 @@ Most email setup flows make users manually enter SMTP hosts, IMAP ports, and SSL
 npm install mailintel
 ```
 
-## Usage
+Or use directly from the command line:
+
+```bash
+npx mailintel user@gmail.com
+```
+
+## CLI
+
+```bash
+$ mailintel ceo@acme-corp.com
+
+ceo@acme-corp.com
+
+  provider      zoho
+  domain        acme-corp.com
+  type          business
+  confidence    high
+  mx            mx.zoho.com
+  source        mx-lookup
+
+  IMAP  imappro.zoho.com:993  SSL
+  SMTP  smtppro.zoho.com:465  SSL
+  User  ceo@acme-corp.com
+```
+
+Multiple emails, JSON output, and options:
+
+```bash
+mailintel user@gmail.com ceo@corp.com          # multiple emails
+mailintel user@example.com --json              # machine-readable JSON
+mailintel user@example.com --resolver google   # use Google DNS instead of Cloudflare
+mailintel user@example.com --timeout 3000      # custom timeout
+mailintel user@example.com --no-ispdb          # skip ISPDB fallback
+```
+
+## API
 
 ```typescript
 import { mailintel } from 'mailintel';
 
 const result = await mailintel('ceo@acme-corp.com');
-// result.provider    => 'zoho'
-// result.connection  => { imap: { host, port, secure }, smtp: { host, port, secure }, username }
-// result.type        => 'business'
-// result.confidence  => 'high'
+// result.provider             => 'zoho'
+// result.connection.imap      => { host: 'imappro.zoho.com', port: 993, secure: true }
+// result.connection.username  => 'ceo@acme-corp.com'
+// result.type                 => 'business'
+// result.confidence           => 'high'
 ```
 
 Works with arrays too:
@@ -92,13 +128,28 @@ interface MailintelResult {
   connection: {                  // null when settings can't be determined
     imap: { host: string; port: number; secure: boolean };
     smtp: { host: string; port: number; secure: boolean };
-    username: string;            // '%EMAILADDRESS%' as placeholder
+    username: string;            // resolved: 'ceo@acme-corp.com'
+    usernameTemplate: string;    // raw template: '%EMAILADDRESS%'
   } | null;
   confidence: 'high' | 'medium' | 'low';
   source: 'override' | 'known-domain' | 'mx-lookup' | null;
   raw: { mx, dns, ispdb };      // raw data for debugging
 }
 ```
+
+### Username
+
+`username` is the resolved value you pass directly to the mail server - no extra work needed.
+
+`usernameTemplate` is the raw ISPDB template, useful if you're building a config UI or need to display the pattern. Templates follow the [Thunderbird ISPDB convention](https://wiki.mozilla.org/Thunderbird:Autoconfiguration:ConfigFileFormat):
+
+| Template | Resolves to | Used by |
+|----------|------------|---------|
+| `%EMAILADDRESS%` | `atef@example.com` | Nearly all modern providers |
+| `%EMAILLOCALPART%` | `atef` | Some older/self-hosted setups |
+| `%EMAILDOMAIN%` | `example.com` | Rare |
+
+All built-in providers use `%EMAILADDRESS%`. The ISPDB fallback may return any of the three, depending on what Thunderbird's database has for that provider.
 
 ## Factory
 

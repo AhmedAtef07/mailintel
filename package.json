@@ -31,10 +31,12 @@
     "build": "tsup",
     "test": "vitest run",
     "test:watch": "vitest",
-    "prepublishOnly": "npm run build && npm run test"
+    "prepublishOnly": "npm run build && npm run test",
+    "release": "release-it"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
+    "release-it": "^19.2.4",
     "tsup": "^8.0.0",
     "typescript": "^5.4.0",
     "vitest": "^2.0.0"

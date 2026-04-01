@@ -143,27 +143,31 @@ mailintel ahmed@atef.dev --json               # machine-readable JSON
 
 ```mermaid
 flowchart TD
+    classDef external fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
+
     A(["ahmed@atef.dev"]) --> B[Check cache]
 
     B -->|hit| Z1([return cached result])
-    B -->|miss| C{Domain override?}
+    B -->|miss| C{User domain override?}
 
     C -->|hit| Z2(["return — confidence: high, source: override"])
     C -->|miss| D{"Known domain?<br/>gmail.com, outlook.com<br/>~50 built-in"}
 
     D -->|hit| Z3(["return — confidence: high, source: known-domain"])
-    D -->|miss| E["DNS MX lookup<br/>cloudflare-dns.com or dns.google"]
+    D -->|miss| E["🌐 DNS MX lookup<br/>cloudflare-dns.com or dns.google"]
 
-    E --> F{MX override?}
+    E --> F{User MX override?}
     F -->|hit| Z4(["return — confidence: high, source: mx-lookup"])
     F -->|miss| G{"Known MX pattern?<br/>*.google.com, *.zoho.com<br/>~30 built-in"}
 
     G -->|hit| H["Get provider settings<br/>apply regional variant if needed"]
-    G -->|miss| I["Thunderbird ISPDB<br/>autoconfig.thunderbird.net"]
+    G -->|miss| I["🌐 Thunderbird ISPDB<br/>autoconfig.thunderbird.net"]
 
     H --> J(["return — confidence: high, source: mx-lookup"])
     I -->|found| K(["return — confidence: medium, source: mx-lookup"])
     I -->|not found| L(["return — connection: null, confidence: low"])
+
+    class E,I external
 ```
 
 At most 2 HTTP requests per uncached lookup - one DNS query and one ISPDB fetch. Known domains resolve instantly with zero network calls.

@@ -4,28 +4,6 @@ Resolve email providers and IMAP/SMTP settings from any email address or domain.
 
 If you're building an app where users connect their email - a CRM, helpdesk, mail client, or anything that sends/receives on their behalf - you normally have to ask them to manually enter their SMTP host, IMAP port, SSL toggle, and username. Mailintel does this automatically. Give it an email or domain and it returns everything you need to connect.
 
-### How it gets the data
-
-Every email domain has **MX records** in DNS that say which mail server handles its email. `atef.dev` points to `smtp.google.com` (Google Workspace), another domain might point to `mx.zoho.com` (Zoho).
-
-Mailintel queries these MX records using **DNS-over-HTTPS** - plain HTTPS requests to public DNS resolvers, not system-level DNS calls. This means it works in serverless functions, edge runtimes, and anywhere `fetch` is available. No native modules, no UDP sockets, no special permissions.
-
-It hits up to two external services per uncached lookup:
-
-| Service | URL | What it returns |
-|---------|-----|-----------------|
-| **Cloudflare DNS** (default) | `cloudflare-dns.com/dns-query?name=atef.dev&type=MX` * | MX records - which mail server handles the domain (e.g., `smtp.google.com`) |
-| **Google DNS** (alternative) | `dns.google/resolve?name=atef.dev&type=MX` | Same MX records, different resolver |
-| **Thunderbird ISPDB** (fallback) | `autoconfig.thunderbird.net/v1.1/{domain}` | IMAP/SMTP connection settings (host, port, SSL) from Mozilla's open database |
-
-\* The Cloudflare DNS endpoint requires an `Accept: application/dns-json` header to return JSON. Opening the URL directly in a browser won't work - it returns an HTML page instead. Mailintel sets this header automatically.
-
-**Rate limits**: Cloudflare DNS has no published rate limits and is free to use ([docs](https://developers.cloudflare.com/1.1.1.1/encryption/dns-over-https/make-api-requests/dns-json/)). Google DNS has undisclosed rate limits and returns HTTP 429 when exceeded ([docs](https://developers.google.com/speed/public-dns/docs/doh)). Thunderbird ISPDB is a static file server with no published limits. In practice, the built-in cache means you'll rarely hit any of these more than once per domain.
-
-Once Mailintel knows the MX server, it matches it against ~30 known provider patterns (e.g., `*.google.com` = Google, `*.zoho.com` = Zoho) and returns the IMAP/SMTP settings from a built-in provider map. If the provider isn't recognized, it falls back to ISPDB.
-
-For well-known domains like `gmail.com` or `outlook.com`, it skips the network entirely and returns settings from a built-in map of [~50 known domains](src/data/domains.ts).
-
 ## Install
 
 ```bash
@@ -66,30 +44,16 @@ const results = await mailintel(['ahmed@atef.dev', 'example.com', 'user@gmail.co
   "isFree": false,
   "hasMx": true,
   "connection": {
-    "imap": {
-      "host": "imap.gmail.com",
-      "port": 993,
-      "secure": true
-    },
-    "smtp": {
-      "host": "smtp.gmail.com",
-      "port": 465,
-      "secure": true
-    },
+    "imap": { "host": "imap.gmail.com", "port": 993, "secure": true },
+    "smtp": { "host": "smtp.gmail.com", "port": 465, "secure": true },
     "username": "ahmed@atef.dev",
     "usernameTemplate": "%EMAILADDRESS%"
   },
   "confidence": "high",
   "source": "mx-lookup",
   "raw": {
-    "mx": [
-      { "priority": 1, "exchange": "smtp.google.com" }
-    ],
-    "dns": {
-      "Status": 0,
-      "Question": [{ "name": "atef.dev", "type": 15 }],
-      "Answer": [{ "name": "atef.dev", "type": 15, "TTL": 300, "data": "1 smtp.google.com." }]
-    },
+    "mx": [{ "priority": 1, "exchange": "smtp.google.com" }],
+    "dns": { "Status": 0, "Answer": [{ "name": "atef.dev", "type": 15, "TTL": 300, "data": "1 smtp.google.com." }] },
     "ispdb": null
   }
 }
@@ -177,53 +141,50 @@ mailintel ahmed@atef.dev --json               # machine-readable JSON
 
 ## How it works
 
-```
-                     ┌─────────────────┐
-                     │  ahmed@atef.dev  │
-                     └────────┬────────┘
-                              │
-                     ┌────────▼────────┐
-                     │   Check cache   │
-                     └────────┬────────┘
-                              │ miss
-                     ┌────────▼────────┐
-                     │ Domain override? │─── hit ──▶ done (confidence: high)
-                     └────────┬────────┘
-                              │ miss
-                     ┌────────▼────────┐
-                     │  Known domain?  │─── hit ──▶ done (confidence: high)
-                     │  (~50 domains)  │    gmail.com, outlook.com, etc.
-                     └────────┬────────┘
-                              │ miss
-                  ┌───────────▼───────────┐
-                  │  DNS MX lookup (DoH)  │  cloudflare-dns.com/dns-query
-                  │  or dns.google        │  or dns.google/resolve
-                  └───────────┬───────────┘
-                              │
-                     ┌────────▼────────┐
-                     │  MX override?   │─── hit ──▶ done (confidence: high)
-                     └────────┬────────┘
-                              │ miss
-                     ┌────────▼────────┐
-                     │   Known MX?     │─── hit ──▶ done (confidence: high)
-                     │  (~30 patterns) │    *.google.com, *.zoho.com, etc.
-                     └────────┬────────┘
-                              │ miss
-              ┌───────────────▼───────────────┐
-              │  Thunderbird ISPDB fallback    │  autoconfig.thunderbird.net
-              └───────────────┬───────────────┘
-                              │
-                   ┌──────────▼──────────┐
-                   │  Apply regional     │  e.g., mx.zoho.eu -> imappro.zoho.eu
-                   │  variants + classify│
-                   └──────────┬──────────┘
-                              │
-                     ┌────────▼────────┐
-                     │  Cache + return  │
-                     └─────────────────┘
+```mermaid
+flowchart TD
+    A([ahmed@atef.dev]) --> B[Check cache]
+
+    B -->|hit| Z1([return cached result])
+    B -->|miss| C{Domain override?}
+
+    C -->|hit| Z2([return · confidence: high\nsource: override])
+    C -->|miss| D{Known domain?\ngmail.com · outlook.com\n~50 built-in}
+
+    D -->|hit| Z3([return · confidence: high\nsource: known-domain])
+    D -->|miss| E[DNS MX lookup\ncloudflare-dns.com or dns.google]
+
+    E --> F{MX override?}
+    F -->|hit| Z4([return · confidence: high\nsource: mx-lookup])
+    F -->|miss| G{Known MX pattern?\n*.google.com · *.zoho.com\n~30 built-in}
+
+    G -->|hit| H[Get provider settings\napply regional variant if needed]
+    G -->|miss| I[Thunderbird ISPDB\nautoconfig.thunderbird.net]
+
+    H --> J([return · confidence: high\nsource: mx-lookup])
+    I -->|found| K([return · confidence: medium\nsource: mx-lookup])
+    I -->|not found| L([return · connection: null\nconfidence: low])
 ```
 
-**Network calls**: at most 2 HTTP requests per uncached lookup - one DNS-over-HTTPS query and one ISPDB fetch. Known domains (gmail.com, outlook.com, etc.) resolve instantly with zero network calls.
+At most 2 HTTP requests per uncached lookup - one DNS query and one ISPDB fetch. Known domains resolve instantly with zero network calls.
+
+### How it gets the data
+
+Every email domain has **MX records** in DNS that say which mail server handles its email. `atef.dev` points to `smtp.google.com` (Google Workspace), another domain might point to `mx.zoho.com` (Zoho).
+
+Mailintel queries these using **DNS-over-HTTPS** - plain HTTPS requests to public DNS resolvers, not system-level DNS calls. Works in serverless functions, edge runtimes, and anywhere `fetch` is available. No native modules, no UDP sockets, no special permissions.
+
+| Service | URL | What it returns |
+|---------|-----|-----------------|
+| **Cloudflare DNS** (default) | `cloudflare-dns.com/dns-query?name=atef.dev&type=MX` * | MX records - which mail server handles the domain |
+| **Google DNS** (alternative) | `dns.google/resolve?name=atef.dev&type=MX` | Same MX records, different resolver |
+| **Thunderbird ISPDB** (fallback) | `autoconfig.thunderbird.net/v1.1/{domain}` | IMAP/SMTP settings from Mozilla's open database |
+
+\* Requires an `Accept: application/dns-json` header. Opening this URL in a browser returns an HTML page, not JSON. Mailintel sets this header automatically.
+
+**Rate limits**: Cloudflare DNS has no published limits and is free ([docs](https://developers.cloudflare.com/1.1.1.1/encryption/dns-over-https/make-api-requests/dns-json/)). Google DNS has undisclosed limits and returns HTTP 429 when exceeded ([docs](https://developers.google.com/speed/public-dns/docs/doh)). Thunderbird ISPDB is a static file server with no published limits. The built-in cache means you'll rarely hit any of these more than once per domain.
+
+Once the MX server is known, it's matched against ~30 provider patterns. For well-known free domains like `gmail.com`, the network is skipped entirely - settings come from a built-in map of [~50 known domains](src/data/domains.ts).
 
 ## Result type
 

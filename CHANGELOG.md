@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1
+
+- Fix README not rendering on npm package page
+
 ## 0.2.0
 
 - **CLI tool**: `npx mailintel user@example.com` with ANSI colored output, `--json`, `--resolver`, `--timeout`, `--no-cache`, `--no-ispdb` flags

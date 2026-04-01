@@ -1,11 +1,13 @@
-import { MailintelOptions, MailintelCallOptions, MailintelResult } from './types';
+import { MailintelOptions, MailintelCallOptions, MailintelResult, Mailintel } from './types';
 import { mailintelCore } from './mailintel';
 import { Cache } from './cache';
 
-export function createMailintel(options: MailintelOptions = {}) {
+export function createMailintel(options: MailintelOptions = {}): Mailintel {
   const cache = options.cache !== false ? new Cache<MailintelResult>() : null;
   const cacheTtl = options.cacheTtl ?? 30 * 60 * 1000;
 
+  async function mailintel(input: string, callOptions?: MailintelCallOptions): Promise<MailintelResult>;
+  async function mailintel(input: string[], callOptions?: MailintelCallOptions): Promise<MailintelResult[]>;
   async function mailintel(
     input: string | string[],
     callOptions?: MailintelCallOptions,
@@ -21,5 +23,5 @@ export function createMailintel(options: MailintelOptions = {}) {
 
   mailintel.clearCache = () => cache?.clear();
 
-  return mailintel;
+  return mailintel as Mailintel;
 }

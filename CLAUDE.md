@@ -22,6 +22,8 @@ npm run test:watch  # Watch mode
 - Update `CHANGELOG.md` with a summary of changes under the current version
 - If adding a new provider: update `KNOWN_DOMAINS`, `KNOWN_MX`, `KNOWN_PROVIDERS`, and `FREE_DOMAINS` (if applicable) - keep them consistent
 - If bumping the version: update both `package.json` and `CHANGELOG.md`
+- If changing exported types or adding fields: update JSDoc comments in `src/types.ts`
+- If changing the API surface: update `llms.txt` to match
 
 ## Architecture
 

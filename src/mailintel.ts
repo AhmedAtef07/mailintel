@@ -62,6 +62,7 @@ export async function mailintelCore(
         email,
         domain,
       ),
+      status: 'ok',
       confidence: 'high',
       source: 'override',
       raw: { mx: null, dns: null, ispdb: null },
@@ -83,6 +84,7 @@ export async function mailintelCore(
       isFree: FREE_DOMAINS.has(domain),
       hasMx: false,
       connection: connection ? resolveConnection(connection, email, domain) : null,
+      status: connection ? 'ok' : 'unknown-provider',
       confidence: 'high',
       source: 'known-domain',
       raw: { mx: null, dns: null, ispdb: null },
@@ -93,7 +95,10 @@ export async function mailintelCore(
 
   // MX lookup
   if (options.mxLookup === false) {
-    const result = emptyResult(email, domain);
+    const result: MailintelResult = {
+      ...emptyResult(email, domain),
+      status: 'lookup-disabled',
+    };
     cache?.set(domain, result, cacheTtl);
     return result;
   }
@@ -115,6 +120,7 @@ export async function mailintelCore(
       isFree: false,
       hasMx: false,
       connection: null,
+      status: 'no-mx-records',
       confidence: 'low',
       source: null,
       raw: { mx: [], dns: dnsRaw, ispdb: null },
@@ -142,6 +148,7 @@ export async function mailintelCore(
             email,
             domain,
           ),
+          status: 'ok',
           confidence: 'high',
           source: 'mx-lookup',
           raw: { mx: mxRecords, dns: dnsRaw, ispdb: null },
@@ -208,6 +215,7 @@ export async function mailintelCore(
       isFree: FREE_DOMAINS.has(domain),
       hasMx: true,
       connection: connection ? resolveConnection(connection, email, domain) : null,
+      status: connection ? 'ok' : 'unknown-provider',
       confidence,
       source: 'mx-lookup',
       raw: { mx: mxRecords, dns: dnsRaw, ispdb: ispdbRaw },
@@ -238,6 +246,7 @@ export async function mailintelCore(
     isFree: FREE_DOMAINS.has(domain),
     hasMx: true,
     connection: connection ? resolveConnection(connection, email, domain) : null,
+    status: connection ? 'ok' : 'unknown-provider',
     confidence: connection ? 'medium' : 'low',
     source: connection ? 'mx-lookup' : null,
     raw: { mx: mxRecords, dns: dnsRaw, ispdb: ispdbRaw },
@@ -256,6 +265,7 @@ function emptyResult(email: string, domain: string): MailintelResult {
     isFree: false,
     hasMx: false,
     connection: null,
+    status: 'lookup-disabled',
     confidence: 'low',
     source: null,
     raw: { mx: null, dns: null, ispdb: null },

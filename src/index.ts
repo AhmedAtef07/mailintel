@@ -1,6 +1,7 @@
 export { createMailintel } from './factory';
 export { mailintelCore } from './mailintel';
 export type {
+  Mailintel,
   MailintelResult,
   MailintelOptions,
   MailintelCallOptions,

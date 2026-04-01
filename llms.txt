@@ -1,0 +1,85 @@
+# mailintel
+
+Resolve email providers and IMAP/SMTP connection settings from any email address or domain. Zero npm dependencies.
+
+## Install
+
+npm install mailintel
+
+## API
+
+```ts
+import { mailintel } from 'mailintel';
+
+// Single email - returns MailintelResult
+const result = await mailintel('user@gmail.com');
+
+// Array of emails - returns MailintelResult[]
+const results = await mailintel(['user@gmail.com', 'ceo@acme-corp.com']);
+
+// Domain only (no email) - returns MailintelResult, username stays as template
+const result = await mailintel('acme-corp.com');
+```
+
+## Factory (custom options)
+
+```ts
+import { createMailintel } from 'mailintel';
+
+const mi = createMailintel({
+  mxLookup: 'google',     // 'cloudflare' (default) | 'google' | true | false
+  ispdb: true,             // Thunderbird ISPDB fallback (default: true)
+  timeout: 5000,           // Network timeout in ms
+  cache: true,             // In-memory cache (default: true)
+  cacheTtl: 1800000,       // Cache TTL in ms (default: 30 min)
+});
+
+const result = await mi('user@example.com');
+mi.clearCache();
+```
+
+## MailintelResult
+
+```ts
+{
+  email: string;             // Input email or "" if domain-only
+  domain: string;            // Extracted domain
+  provider: string | null;   // "google", "microsoft", "zoho", etc.
+  mx: string | null;         // Primary MX hostname from DNS
+  type: 'free' | 'business' | 'unknown';
+  isFree: boolean;
+  hasMx: boolean;
+  connection: ConnectionInfo | null;  // null when status is not "ok"
+  status: 'ok' | 'no-mx-records' | 'unknown-provider' | 'lookup-disabled';
+  confidence: 'high' | 'medium' | 'low';
+  source: 'override' | 'known-domain' | 'mx-lookup' | null;
+  raw: { mx, dns, ispdb };  // Raw responses for debugging
+}
+```
+
+## ConnectionInfo
+
+```ts
+{
+  imap: { host: string; port: number; secure: boolean };
+  smtp: { host: string; port: number; secure: boolean };
+  username: string;          // Resolved value, e.g. "user@gmail.com"
+  usernameTemplate: string;  // Raw template: "%EMAILADDRESS%" | "%EMAILLOCALPART%" | "%EMAILDOMAIN%"
+}
+```
+
+## Status values
+
+- `"ok"` - connection settings found
+- `"no-mx-records"` - DNS returned no MX records for this domain
+- `"unknown-provider"` - provider not recognized or no IMAP/SMTP settings available for it
+- `"lookup-disabled"` - MX lookup disabled and domain not in known list
+
+## Key behaviors
+
+- Never throws - always returns a result
+- Known domains (~50 built-in) resolve instantly with zero network calls
+- At most 2 HTTP requests per uncached lookup (DNS + ISPDB)
+- Results cached by domain (different emails on same domain share cache)
+- username is already resolved from the template using the input email
+- Domain-only input: username stays as the raw template since there's no email to resolve

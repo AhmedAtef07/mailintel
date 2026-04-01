@@ -16,19 +16,19 @@ npm install mailintel
 import { mailintel } from 'mailintel';
 
 // With an email - username is resolved automatically
-const result = await mailintel('ahmed@atef.dev');
+const result = await mailintel('ceo@acme-corp.com');
 // result.provider             => 'google'
 // result.connection.imap      => { host: 'imap.gmail.com', port: 993, secure: true }
-// result.connection.username  => 'ahmed@atef.dev'
+// result.connection.username  => 'ceo@acme-corp.com'
 // result.type                 => 'business'
 // result.confidence           => 'high'
 
 // With just a domain - same result, username stays as template
-const result = await mailintel('atef.dev');
+const result = await mailintel('acme-corp.com');
 // result.connection.username  => '%EMAILADDRESS%'
 
 // Multiple inputs at once
-const results = await mailintel(['ahmed@atef.dev', 'example.com', 'user@gmail.com']);
+const results = await mailintel(['ceo@acme-corp.com', 'example.com', 'user@gmail.com']);
 ```
 
 <details>
@@ -36,8 +36,8 @@ const results = await mailintel(['ahmed@atef.dev', 'example.com', 'user@gmail.co
 
 ```json
 {
-  "email": "ahmed@atef.dev",
-  "domain": "atef.dev",
+  "email": "ceo@acme-corp.com",
+  "domain": "acme-corp.com",
   "provider": "google",
   "mx": "smtp.google.com",
   "type": "business",
@@ -46,14 +46,14 @@ const results = await mailintel(['ahmed@atef.dev', 'example.com', 'user@gmail.co
   "connection": {
     "imap": { "host": "imap.gmail.com", "port": 993, "secure": true },
     "smtp": { "host": "smtp.gmail.com", "port": 465, "secure": true },
-    "username": "ahmed@atef.dev",
+    "username": "ceo@acme-corp.com",
     "usernameTemplate": "%EMAILADDRESS%"
   },
   "confidence": "high",
   "source": "mx-lookup",
   "raw": {
     "mx": [{ "priority": 1, "exchange": "smtp.google.com" }],
-    "dns": { "Status": 0, "Answer": [{ "name": "atef.dev", "type": 15, "TTL": 300, "data": "1 smtp.google.com." }] },
+    "dns": { "Status": 0, "Answer": [{ "name": "acme-corp.com", "type": 15, "TTL": 300, "data": "1 smtp.google.com." }] },
     "ispdb": null
   }
 }
@@ -101,14 +101,14 @@ lookup.clearCache();
 ## CLI
 
 ```bash
-npx mailintel ahmed@atef.dev
+npx mailintel ceo@acme-corp.com
 ```
 
 ```
-ahmed@atef.dev
+ceo@acme-corp.com
 
   provider      google
-  domain        atef.dev
+  domain        acme-corp.com
   type          business
   confidence    high
   mx            smtp.google.com
@@ -116,15 +116,15 @@ ahmed@atef.dev
 
   IMAP  imap.gmail.com:993  SSL
   SMTP  smtp.gmail.com:465  SSL
-  Username  ahmed@atef.dev
+  Username  ceo@acme-corp.com
 ```
 
 Supports multiple emails, domain-only lookups, and JSON output:
 
 ```bash
 mailintel user@gmail.com admin@example.com    # multiple emails
-mailintel atef.dev                            # domain-only lookup
-mailintel ahmed@atef.dev --json               # machine-readable JSON
+mailintel acme-corp.com                            # domain-only lookup
+mailintel ceo@acme-corp.com --json               # machine-readable JSON
 ```
 
 ### CLI options
@@ -167,7 +167,7 @@ Mailintel queries these using **DNS-over-HTTPS** - plain HTTPS requests to publi
 | Service | URL | What it returns |
 |---------|-----|-----------------|
 | **Cloudflare DNS** (default) | `cloudflare-dns.com/dns-query?name=example.com&type=MX` * | MX records - which mail server handles the domain |
-| **Google DNS** (alternative) | `dns.google/resolve?name=atef.dev&type=MX` | Same MX records, different resolver |
+| **Google DNS** (alternative) | `dns.google/resolve?name=acme-corp.com&type=MX` | Same MX records, different resolver |
 | **Thunderbird ISPDB** (fallback) | `autoconfig.thunderbird.net/v1.1/{domain}` | IMAP/SMTP settings from Mozilla's open database |
 
 \* Requires an `Accept: application/dns-json` header. Opening this URL in a browser returns an HTML page, not JSON. Mailintel sets this header automatically.
@@ -187,17 +187,27 @@ interface MailintelResult {
   type: 'free' | 'business' | 'unknown';
   isFree: boolean;
   hasMx: boolean;
-  connection: {                  // null when settings can't be determined
+  connection: {                  // null when status is not 'ok'
     imap: { host: string; port: number; secure: boolean };
     smtp: { host: string; port: number; secure: boolean };
-    username: string;            // resolved: 'ahmed@atef.dev'
+    username: string;            // resolved: 'user@example.com'
     usernameTemplate: string;    // raw template: '%EMAILADDRESS%'
   } | null;
+  status: 'ok' | 'no-mx-records' | 'unknown-provider' | 'lookup-disabled';
   confidence: 'high' | 'medium' | 'low';
   source: 'override' | 'known-domain' | 'mx-lookup' | null;
   raw: { mx, dns, ispdb };      // raw data for debugging
 }
 ```
+
+### Status
+
+| Value | Meaning |
+|-------|---------|
+| `ok` | Connection settings found |
+| `no-mx-records` | DNS returned no MX records for this domain |
+| `unknown-provider` | Provider not recognized or no IMAP/SMTP settings available for it |
+| `lookup-disabled` | MX lookup was disabled and domain is not in the known list |
 
 ### Username
 
@@ -207,9 +217,9 @@ interface MailintelResult {
 
 | Template | Resolves to | Used by |
 |----------|------------|---------|
-| `%EMAILADDRESS%` | `ahmed@atef.dev` | Nearly all modern providers |
-| `%EMAILLOCALPART%` | `ahmed` | Some older/self-hosted setups |
-| `%EMAILDOMAIN%` | `atef.dev` | Rare |
+| `%EMAILADDRESS%` | `user@example.com` | Nearly all modern providers |
+| `%EMAILLOCALPART%` | `user` | Some older/self-hosted setups |
+| `%EMAILDOMAIN%` | `example.com` | Rare |
 
 All built-in providers use `%EMAILADDRESS%`. The ISPDB fallback may return any of the three depending on what Thunderbird's database has for that provider.
 

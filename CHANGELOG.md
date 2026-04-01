@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0
+
+- **TypeScript overloads**: `mailintel(string)` returns `Promise<MailintelResult>`, `mailintel(string[])` returns `Promise<MailintelResult[]>` - no more `Array.isArray()` checks
+- **`status` field**: `'ok' | 'no-mx-records' | 'unknown-provider' | 'lookup-disabled'` on every result - callers can now distinguish why `connection` is null
+- **JSDoc on exported types**: all key fields documented inline for IDE and AI tool support
+- **`llms.txt`**: ships with the package for AI tool quick reference
+- **`Mailintel` interface**: exported typed interface for the factory return value
+
 ## 0.2.2
 
 - Replace Mermaid diagram with plain-text ASCII tree for npm compatibility

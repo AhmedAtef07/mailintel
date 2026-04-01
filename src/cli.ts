@@ -149,7 +149,7 @@ function formatResult(result: MailintelResult): string {
     lines.push(`  ${bold('Username')}  ${dim(username)}`);
   } else {
     lines.push('');
-    lines.push(`  ${dim('No connection settings found')}`);
+    lines.push(`  ${dim('No connection settings found')}  ${dim(`(${result.status})`)}`);
   }
 
   return lines.join('\n');
@@ -180,7 +180,7 @@ async function main() {
   const results: MailintelResult[] = [];
 
   for (const email of args.emails) {
-    const result = (await mailintel(email)) as MailintelResult;
+    const result = await mailintel(email);
     results.push(result);
   }
 

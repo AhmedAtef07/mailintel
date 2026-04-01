@@ -50,29 +50,29 @@ describe('mailintel', () => {
     const result = await mi('user@gmail.com');
 
     expect(fetch).not.toHaveBeenCalled();
-    expect(result).not.toBeInstanceOf(Array);
-    const r = result as Awaited<ReturnType<typeof mi>> & { provider: string };
-    expect(r.provider).toBe('google');
-    expect(r.domain).toBe('gmail.com');
-    expect(r.isFree).toBe(true);
-    expect(r.type).toBe('free');
-    expect(r.confidence).toBe('high');
-    expect(r.source).toBe('known-domain');
-    expect(r.connection).not.toBeNull();
-    expect(r.connection!.imap.host).toBe('imap.gmail.com');
-    expect(r.connection!.smtp.host).toBe('smtp.gmail.com');
-    expect(r.connection!.username).toBe('user@gmail.com');
-    expect(r.connection!.usernameTemplate).toBe('%EMAILADDRESS%');
+    expect(result.provider).toBe('google');
+    expect(result.domain).toBe('gmail.com');
+    expect(result.isFree).toBe(true);
+    expect(result.type).toBe('free');
+    expect(result.status).toBe('ok');
+    expect(result.confidence).toBe('high');
+    expect(result.source).toBe('known-domain');
+    expect(result.connection).not.toBeNull();
+    expect(result.connection!.imap.host).toBe('imap.gmail.com');
+    expect(result.connection!.smtp.host).toBe('smtp.gmail.com');
+    expect(result.connection!.username).toBe('user@gmail.com');
+    expect(result.connection!.usernameTemplate).toBe('%EMAILADDRESS%');
   });
 
   it('should resolve custom domain via MX lookup', async () => {
     const fetch = mockFetchForMx(['10 mx.zoho.com.']);
     const mi = createMailintel({ fetch });
-    const result = (await mi('user@customdomain.com')) as any;
+    const result = await mi('user@customdomain.com');
 
     expect(result.provider).toBe('zoho');
     expect(result.hasMx).toBe(true);
     expect(result.mx).toBe('mx.zoho.com');
+    expect(result.status).toBe('ok');
     expect(result.source).toBe('mx-lookup');
     expect(result.confidence).toBe('high');
     expect(result.connection!.imap.host).toBe('imappro.zoho.com');
@@ -98,24 +98,46 @@ describe('mailintel', () => {
 
     const fetch = mockFetchForMx(['10 mx.unknownprovider.net.'], ispdbXml);
     const mi = createMailintel({ fetch });
-    const result = (await mi('user@somedomain.com')) as any;
+    const result = await mi('user@somedomain.com');
 
     expect(result.hasMx).toBe(true);
+    expect(result.status).toBe('ok');
     expect(result.connection).not.toBeNull();
-    expect(result.connection.imap.host).toBe('imap.custom.com');
+    expect(result.connection!.imap.host).toBe('imap.custom.com');
     expect(result.confidence).toBe('medium');
   });
 
-  it('should return null provider for unknown domain with no MX', async () => {
+  it('should return no-mx-records status for domain with no MX', async () => {
     const fetch = mockFetchEmpty();
     const mi = createMailintel({ fetch });
-    const result = (await mi('user@mystery-host.com')) as any;
+    const result = await mi('user@mystery-host.com');
 
     expect(result.provider).toBeNull();
     expect(result.connection).toBeNull();
     expect(result.hasMx).toBe(false);
     expect(result.type).toBe('unknown');
+    expect(result.status).toBe('no-mx-records');
     expect(result.confidence).toBe('low');
+  });
+
+  it('should return unknown-provider status when MX found but no settings', async () => {
+    const fetch = mockFetchForMx(['10 mx.unknownprovider.net.']);
+    const mi = createMailintel({ fetch, ispdb: false });
+    const result = await mi('user@somedomain.com');
+
+    expect(result.hasMx).toBe(true);
+    expect(result.connection).toBeNull();
+    expect(result.status).toBe('unknown-provider');
+  });
+
+  it('should return lookup-disabled status when mxLookup is false', async () => {
+    const fetch = vi.fn();
+    const mi = createMailintel({ fetch, mxLookup: false });
+    const result = await mi('user@unknowndomain.com');
+
+    expect(fetch).not.toHaveBeenCalled();
+    expect(result.status).toBe('lookup-disabled');
+    expect(result.connection).toBeNull();
   });
 
   it('should handle array input', async () => {
@@ -123,11 +145,9 @@ describe('mailintel', () => {
     const mi = createMailintel({ fetch });
     const results = await mi(['user@gmail.com', 'user@outlook.com']);
 
-    expect(Array.isArray(results)).toBe(true);
-    const arr = results as any[];
-    expect(arr).toHaveLength(2);
-    expect(arr[0].provider).toBe('google');
-    expect(arr[1].provider).toBe('microsoft');
+    expect(results).toHaveLength(2);
+    expect(results[0].provider).toBe('google');
+    expect(results[1].provider).toBe('microsoft');
   });
 
   it('should use user domain override first', async () => {
@@ -143,11 +163,12 @@ describe('mailintel', () => {
       },
     });
 
-    const result = (await mi('user@mycompany.com')) as any;
+    const result = await mi('user@mycompany.com');
     expect(fetch).not.toHaveBeenCalled();
     expect(result.provider).toBe('internal');
+    expect(result.status).toBe('ok');
     expect(result.source).toBe('override');
-    expect(result.connection.imap.host).toBe('imap.mycompany.com');
+    expect(result.connection!.imap.host).toBe('imap.mycompany.com');
   });
 
   it('should use user MX override', async () => {
@@ -163,19 +184,21 @@ describe('mailintel', () => {
       },
     });
 
-    const result = (await mi('user@somesite.com')) as any;
+    const result = await mi('user@somesite.com');
     expect(result.provider).toBe('namecheap');
-    expect(result.connection.imap.host).toBe('mail.privateemail.com');
+    expect(result.status).toBe('ok');
+    expect(result.connection!.imap.host).toBe('mail.privateemail.com');
   });
 
   it('should handle Zoho regional variant (zoho.eu)', async () => {
     const fetch = mockFetchForMx(['10 mx.zoho.eu.']);
     const mi = createMailintel({ fetch });
-    const result = (await mi('user@eucompany.com')) as any;
+    const result = await mi('user@eucompany.com');
 
     expect(result.provider).toBe('zoho');
-    expect(result.connection.imap.host).toBe('imappro.zoho.eu');
-    expect(result.connection.smtp.host).toBe('smtppro.zoho.eu');
+    expect(result.status).toBe('ok');
+    expect(result.connection!.imap.host).toBe('imappro.zoho.eu');
+    expect(result.connection!.smtp.host).toBe('smtppro.zoho.eu');
   });
 
   it('should cache results by domain', async () => {
@@ -208,13 +231,14 @@ describe('mailintel', () => {
   it('should treat input without @ as domain', async () => {
     const fetch = mockFetchForMx(['10 mx.zoho.com.']);
     const mi = createMailintel({ fetch });
-    const result = (await mi('customdomain.com')) as any;
+    const result = await mi('customdomain.com');
 
     expect(result.email).toBe('');
     expect(result.domain).toBe('customdomain.com');
     expect(result.provider).toBe('zoho');
-    expect(result.connection.username).toBe('%EMAILADDRESS%');
-    expect(result.connection.usernameTemplate).toBe('%EMAILADDRESS%');
+    expect(result.status).toBe('ok');
+    expect(result.connection!.username).toBe('%EMAILADDRESS%');
+    expect(result.connection!.usernameTemplate).toBe('%EMAILADDRESS%');
   });
 
   it('clearCache should work', async () => {

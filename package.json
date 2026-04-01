@@ -21,7 +21,7 @@
     "LICENSE"
   ],
   "bin": {
-    "mailintel": "./dist/cli.js"
+    "mailintel": "dist/cli.js"
   },
   "sideEffects": false,
   "engines": {

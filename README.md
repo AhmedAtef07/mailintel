@@ -143,27 +143,27 @@ mailintel ahmed@atef.dev --json               # machine-readable JSON
 
 ```mermaid
 flowchart TD
-    A([ahmed@atef.dev]) --> B[Check cache]
+    A(["ahmed@atef.dev"]) --> B[Check cache]
 
     B -->|hit| Z1([return cached result])
     B -->|miss| C{Domain override?}
 
-    C -->|hit| Z2([return · confidence: high\nsource: override])
-    C -->|miss| D{Known domain?\ngmail.com · outlook.com\n~50 built-in}
+    C -->|hit| Z2(["return — confidence: high, source: override"])
+    C -->|miss| D{"Known domain?<br/>gmail.com, outlook.com<br/>~50 built-in"}
 
-    D -->|hit| Z3([return · confidence: high\nsource: known-domain])
-    D -->|miss| E[DNS MX lookup\ncloudflare-dns.com or dns.google]
+    D -->|hit| Z3(["return — confidence: high, source: known-domain"])
+    D -->|miss| E["DNS MX lookup<br/>cloudflare-dns.com or dns.google"]
 
     E --> F{MX override?}
-    F -->|hit| Z4([return · confidence: high\nsource: mx-lookup])
-    F -->|miss| G{Known MX pattern?\n*.google.com · *.zoho.com\n~30 built-in}
+    F -->|hit| Z4(["return — confidence: high, source: mx-lookup"])
+    F -->|miss| G{"Known MX pattern?<br/>*.google.com, *.zoho.com<br/>~30 built-in"}
 
-    G -->|hit| H[Get provider settings\napply regional variant if needed]
-    G -->|miss| I[Thunderbird ISPDB\nautoconfig.thunderbird.net]
+    G -->|hit| H["Get provider settings<br/>apply regional variant if needed"]
+    G -->|miss| I["Thunderbird ISPDB<br/>autoconfig.thunderbird.net"]
 
-    H --> J([return · confidence: high\nsource: mx-lookup])
-    I -->|found| K([return · confidence: medium\nsource: mx-lookup])
-    I -->|not found| L([return · connection: null\nconfidence: low])
+    H --> J(["return — confidence: high, source: mx-lookup"])
+    I -->|found| K(["return — confidence: medium, source: mx-lookup"])
+    I -->|not found| L(["return — connection: null, confidence: low"])
 ```
 
 At most 2 HTTP requests per uncached lookup - one DNS query and one ISPDB fetch. Known domains resolve instantly with zero network calls.

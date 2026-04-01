@@ -1,4 +1,7 @@
 import { defineConfig } from 'tsup';
+import { readFileSync } from 'fs';
+
+const { version } = JSON.parse(readFileSync('./package.json', 'utf8'));
 
 export default defineConfig([
   {
@@ -6,10 +9,10 @@ export default defineConfig([
     format: ['esm', 'cjs'],
     dts: true,
     clean: true,
-    splitting: true,
+    splitting: false,
     treeshake: true,
     minify: false,
-    sourcemap: true,
+    sourcemap: false,
   },
   {
     entry: ['src/cli.ts'],
@@ -19,5 +22,8 @@ export default defineConfig([
     treeshake: true,
     minify: false,
     sourcemap: false,
+    define: {
+      __MAILINTEL_VERSION__: JSON.stringify(version),
+    },
   },
 ]);

@@ -159,9 +159,7 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
 
   if (args.version) {
-    // Read version from the built package - import is resolved at build time
-    const pkg = await import('../package.json', { with: { type: 'json' } }).catch(() => ({ default: { version: '0.0.0' } }));
-    process.stdout.write(pkg.default.version + '\n');
+    process.stdout.write(__MAILINTEL_VERSION__ + '\n');
     return;
   }
 

@@ -6,21 +6,25 @@ If you're building an app where users connect their email - a CRM, helpdesk, mai
 
 ### How it gets the data
 
-Every email domain has **MX records** in DNS that say which mail server handles its email. `atef.dev` might point to `smtp.google.com` (Google Workspace), `noor.sh` might point to `mx.zoho.com` (Zoho).
+Every email domain has **MX records** in DNS that say which mail server handles its email. `atef.dev` points to `smtp.google.com` (Google Workspace), another domain might point to `mx.zoho.com` (Zoho).
 
-Mailintel queries these MX records using **DNS-over-HTTPS** - plain HTTPS requests to public DNS resolvers, not system-level DNS calls. This means it works in serverless functions, edge runtimes, browsers, or anywhere `fetch` is available. No native modules, no UDP sockets, no special permissions.
+Mailintel queries these MX records using **DNS-over-HTTPS** - plain HTTPS requests to public DNS resolvers, not system-level DNS calls. This means it works in serverless functions, edge runtimes, and anywhere `fetch` is available. No native modules, no UDP sockets, no special permissions.
 
 It hits up to two external services per uncached lookup:
 
 | Service | URL | What it returns |
 |---------|-----|-----------------|
-| **Cloudflare DNS** (default) | `cloudflare-dns.com/dns-query?name=atef.dev&type=MX` | MX records - which mail server handles the domain (e.g., `smtp.google.com`) |
+| **Cloudflare DNS** (default) | `cloudflare-dns.com/dns-query?name=atef.dev&type=MX` * | MX records - which mail server handles the domain (e.g., `smtp.google.com`) |
 | **Google DNS** (alternative) | `dns.google/resolve?name=atef.dev&type=MX` | Same MX records, different resolver |
 | **Thunderbird ISPDB** (fallback) | `autoconfig.thunderbird.net/v1.1/{domain}` | IMAP/SMTP connection settings (host, port, SSL) from Mozilla's open database |
 
+\* The Cloudflare DNS endpoint requires an `Accept: application/dns-json` header to return JSON. Opening the URL directly in a browser won't work - it returns an HTML page instead. Mailintel sets this header automatically.
+
+**Rate limits**: Cloudflare DNS has no published rate limits and is free to use ([docs](https://developers.cloudflare.com/1.1.1.1/encryption/dns-over-https/make-api-requests/dns-json/)). Google DNS has undisclosed rate limits and returns HTTP 429 when exceeded ([docs](https://developers.google.com/speed/public-dns/docs/doh)). Thunderbird ISPDB is a static file server with no published limits. In practice, the built-in cache means you'll rarely hit any of these more than once per domain.
+
 Once Mailintel knows the MX server, it matches it against ~30 known provider patterns (e.g., `*.google.com` = Google, `*.zoho.com` = Zoho) and returns the IMAP/SMTP settings from a built-in provider map. If the provider isn't recognized, it falls back to ISPDB.
 
-For well-known domains like `gmail.com` or `outlook.com`, it skips the network entirely and returns settings instantly from a built-in map of ~50 domains.
+For well-known domains like `gmail.com` or `outlook.com`, it skips the network entirely and returns settings from a built-in map of [~50 known domains](src/data/domains.ts).
 
 ## Install
 
@@ -46,8 +50,54 @@ const result = await mailintel('atef.dev');
 // result.connection.username  => '%EMAILADDRESS%'
 
 // Multiple inputs at once
-const results = await mailintel(['ahmed@atef.dev', 'noor.sh', 'user@gmail.com']);
+const results = await mailintel(['ahmed@atef.dev', 'example.com', 'user@gmail.com']);
 ```
+
+<details>
+<summary>Full result example</summary>
+
+```json
+{
+  "email": "ahmed@atef.dev",
+  "domain": "atef.dev",
+  "provider": "google",
+  "mx": "smtp.google.com",
+  "type": "business",
+  "isFree": false,
+  "hasMx": true,
+  "connection": {
+    "imap": {
+      "host": "imap.gmail.com",
+      "port": 993,
+      "secure": true
+    },
+    "smtp": {
+      "host": "smtp.gmail.com",
+      "port": 465,
+      "secure": true
+    },
+    "username": "ahmed@atef.dev",
+    "usernameTemplate": "%EMAILADDRESS%"
+  },
+  "confidence": "high",
+  "source": "mx-lookup",
+  "raw": {
+    "mx": [
+      { "priority": 1, "exchange": "smtp.google.com" }
+    ],
+    "dns": {
+      "Status": 0,
+      "Question": [{ "name": "atef.dev", "type": 15 }],
+      "Answer": [{ "name": "atef.dev", "type": 15, "TTL": 300, "data": "1 smtp.google.com." }]
+    },
+    "ispdb": null
+  }
+}
+```
+
+The API and CLI return the same structure. The CLI's `--json` flag outputs this exact format.
+
+</details>
 
 ### Factory
 
@@ -108,7 +158,7 @@ ahmed@atef.dev
 Supports multiple emails, domain-only lookups, and JSON output:
 
 ```bash
-mailintel user@gmail.com ceo@noor.sh          # multiple emails
+mailintel user@gmail.com admin@example.com    # multiple emails
 mailintel atef.dev                            # domain-only lookup
 mailintel ahmed@atef.dev --json               # machine-readable JSON
 ```

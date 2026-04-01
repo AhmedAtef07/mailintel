@@ -141,46 +141,32 @@ mailintel ahmed@atef.dev --json               # machine-readable JSON
 
 ## How it works
 
-```mermaid
-flowchart TD
-    classDef external fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
-
-    A(["ahmed@atef.dev"]) --> B[Check cache]
-
-    B -->|hit| Z1([return cached result])
-    B -->|miss| C{User domain override?}
-
-    C -->|hit| Z2(["return — confidence: high, source: override"])
-    C -->|miss| D{"Known domain?<br/>gmail.com, outlook.com<br/>~50 built-in"}
-
-    D -->|hit| Z3(["return — confidence: high, source: known-domain"])
-    D -->|miss| E["🌐 DNS MX lookup<br/>cloudflare-dns.com or dns.google"]
-
-    E --> F{User MX override?}
-    F -->|hit| Z4(["return — confidence: high, source: mx-lookup"])
-    F -->|miss| G{"Known MX pattern?<br/>*.google.com, *.zoho.com<br/>~30 built-in"}
-
-    G -->|hit| H["Get provider settings<br/>apply regional variant if needed"]
-    G -->|miss| I["🌐 Thunderbird ISPDB<br/>autoconfig.thunderbird.net"]
-
-    H --> J(["return — confidence: high, source: mx-lookup"])
-    I -->|found| K(["return — confidence: medium, source: mx-lookup"])
-    I -->|not found| L(["return — connection: null, confidence: low"])
-
-    class E,I external
+```
+input
+  └── check cache
+        ├── hit  → return cached result
+        └── miss
+              ├── user domain override?  → return (confidence: high, source: override)
+              ├── known domain?          → return (confidence: high, source: known-domain)
+              └── DNS MX lookup [network]
+                    ├── user MX override?   → return (confidence: high, source: mx-lookup)
+                    ├── known MX pattern?   → return (confidence: high, source: mx-lookup)
+                    └── Thunderbird ISPDB [network]
+                          ├── found      → return (confidence: medium, source: mx-lookup)
+                          └── not found  → return connection: null (confidence: low)
 ```
 
 At most 2 HTTP requests per uncached lookup - one DNS query and one ISPDB fetch. Known domains resolve instantly with zero network calls.
 
 ### How it gets the data
 
-Every email domain has **MX records** in DNS that say which mail server handles its email. `atef.dev` points to `smtp.google.com` (Google Workspace), another domain might point to `mx.zoho.com` (Zoho).
+Every email domain has **MX records** in DNS that say which mail server handles its email. A Google Workspace domain points to `smtp.google.com`, another might point to `mx.zoho.com` (Zoho).
 
 Mailintel queries these using **DNS-over-HTTPS** - plain HTTPS requests to public DNS resolvers, not system-level DNS calls. Works in serverless functions, edge runtimes, and anywhere `fetch` is available. No native modules, no UDP sockets, no special permissions.
 
 | Service | URL | What it returns |
 |---------|-----|-----------------|
-| **Cloudflare DNS** (default) | `cloudflare-dns.com/dns-query?name=atef.dev&type=MX` * | MX records - which mail server handles the domain |
+| **Cloudflare DNS** (default) | `cloudflare-dns.com/dns-query?name=example.com&type=MX` * | MX records - which mail server handles the domain |
 | **Google DNS** (alternative) | `dns.google/resolve?name=atef.dev&type=MX` | Same MX records, different resolver |
 | **Thunderbird ISPDB** (fallback) | `autoconfig.thunderbird.net/v1.1/{domain}` | IMAP/SMTP settings from Mozilla's open database |
 

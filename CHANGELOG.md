@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.2
+
+- Replace Mermaid diagram with plain-text ASCII tree for npm compatibility
+
 ## 0.2.1
 
 - Fix README not rendering on npm package page

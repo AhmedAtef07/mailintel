@@ -57,8 +57,10 @@ describe('mailintel', () => {
     expect(result.status).toBe('ok');
     expect(result.confidence).toBe('high');
     expect(result.source).toBe('known-domain');
+    expect(result.providerDisplayName).toBe('Google Workspace');
     expect(result.connection).not.toBeNull();
     expect(result.connection!.imap.host).toBe('imap.gmail.com');
+    expect(result.connection!.imap.security).toBe('tls');
     expect(result.connection!.smtp.host).toBe('smtp.gmail.com');
     expect(result.connection!.username).toBe('user@gmail.com');
     expect(result.connection!.usernameTemplate).toBe('%EMAILADDRESS%');
@@ -157,8 +159,8 @@ describe('mailintel', () => {
       providers: {
         'mycompany.com': {
           provider: 'internal',
-          imap: { host: 'imap.mycompany.com', port: 993, secure: true },
-          smtp: { host: 'smtp.mycompany.com', port: 465, secure: true },
+          imap: { host: 'imap.mycompany.com', port: 993, security: 'tls' },
+          smtp: { host: 'smtp.mycompany.com', port: 465, security: 'tls' },
         },
       },
     });
@@ -178,8 +180,8 @@ describe('mailintel', () => {
       mxOverrides: {
         'privateemail.com': {
           provider: 'namecheap',
-          imap: { host: 'mail.privateemail.com', port: 993, secure: true },
-          smtp: { host: 'mail.privateemail.com', port: 465, secure: true },
+          imap: { host: 'mail.privateemail.com', port: 993, security: 'tls' },
+          smtp: { host: 'mail.privateemail.com', port: 465, security: 'tls' },
         },
       },
     });

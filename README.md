@@ -39,13 +39,14 @@ const results = await mailintel(['ceo@acme-corp.com', 'example.com', 'user@gmail
   "email": "ceo@acme-corp.com",
   "domain": "acme-corp.com",
   "provider": "google",
+  "providerDisplayName": "Google Workspace",
   "mx": "smtp.google.com",
   "type": "business",
   "isFree": false,
   "hasMx": true,
   "connection": {
-    "imap": { "host": "imap.gmail.com", "port": 993, "secure": true },
-    "smtp": { "host": "smtp.gmail.com", "port": 465, "secure": true },
+    "imap": { "host": "imap.gmail.com", "port": 993, "security": "tls" },
+    "smtp": { "host": "smtp.gmail.com", "port": 465, "security": "tls" },
     "username": "ceo@acme-corp.com",
     "usernameTemplate": "%EMAILADDRESS%"
   },
@@ -183,13 +184,14 @@ interface MailintelResult {
   email: string;                 // input email, or '' for domain-only lookups
   domain: string;
   provider: string | null;       // 'google', 'microsoft', 'zoho', etc.
+  providerDisplayName: string | null; // 'Google Workspace', 'Microsoft 365', etc.
   mx: string | null;             // primary MX hostname
   type: 'free' | 'business' | 'unknown';
   isFree: boolean;
   hasMx: boolean;
   connection: {                  // null when status is not 'ok'
-    imap: { host: string; port: number; secure: boolean };
-    smtp: { host: string; port: number; secure: boolean };
+    imap: { host: string; port: number; security: 'tls' | 'starttls' | 'none' };
+    smtp: { host: string; port: number; security: 'tls' | 'starttls' | 'none' };
     username: string;            // resolved: 'user@example.com'
     usernameTemplate: string;    // raw template: '%EMAILADDRESS%'
   } | null;

@@ -1,4 +1,4 @@
-import { RawRawConnectionInfo } from './types';
+import { RawConnectionInfo } from './types';
 
 const ISPDB_URL = 'https://autoconfig.thunderbird.net/v1.1';
 
@@ -33,6 +33,12 @@ export async function lookupIspdb(
   }
 }
 
+function socketTypeToSecurity(socketType: string | undefined): 'tls' | 'starttls' | 'none' {
+  if (socketType === 'SSL') return 'tls';
+  if (socketType === 'STARTTLS') return 'starttls';
+  return 'none';
+}
+
 function parseIspdbXml(xml: string): RawConnectionInfo | null {
   const imapMatch = xml.match(/<incomingServer type="imap">([\s\S]*?)<\/incomingServer>/);
   const smtpMatch = xml.match(/<outgoingServer type="smtp">([\s\S]*?)<\/outgoingServer>/);
@@ -58,12 +64,12 @@ function parseIspdbXml(xml: string): RawConnectionInfo | null {
     imap: {
       host: imapHost,
       port: parseInt(imapPort, 10),
-      secure: imapSocket === 'SSL',
+      security: socketTypeToSecurity(imapSocket),
     },
     smtp: {
       host: smtpHost,
       port: parseInt(smtpPort, 10),
-      secure: smtpSocket === 'SSL' || smtpSocket === 'STARTTLS',
+      security: socketTypeToSecurity(smtpSocket),
     },
     username,
   };

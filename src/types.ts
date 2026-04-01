@@ -1,7 +1,8 @@
 export interface ServerConfig {
   host: string;
   port: number;
-  secure: boolean;
+  /** Connection security: "tls" = implicit TLS on connect (993/465), "starttls" = upgrade after connect (587/143), "none" = no encryption */
+  security: 'tls' | 'starttls' | 'none';
 }
 
 export interface RawConnectionInfo {
@@ -29,6 +30,8 @@ export interface MailintelResult {
   domain: string;
   /** Detected email provider name, e.g. "google", "microsoft", "zoho". null if provider could not be identified */
   provider: string | null;
+  /** Human-readable provider name, e.g. "Google Workspace", "Microsoft 365", "Zoho Mail". null if provider unknown */
+  providerDisplayName: string | null;
   /** Primary MX record hostname from DNS. null if MX lookup was skipped or no records found */
   mx: string | null;
   /** "free" for consumer providers (Gmail, Yahoo), "business" for custom/work domains, "unknown" if unresolved */
@@ -69,6 +72,7 @@ export interface MailintelResult {
 
 export interface ProviderOverride {
   provider: string;
+  providerDisplayName?: string;
   imap: ServerConfig;
   smtp: ServerConfig;
   username?: string;

@@ -45,6 +45,7 @@ mi.clearCache();
   email: string;             // Input email or "" if domain-only
   domain: string;            // Extracted domain
   provider: string | null;   // "google", "microsoft", "zoho", etc.
+  providerDisplayName: string | null; // "Google Workspace", "Microsoft 365", etc.
   mx: string | null;         // Primary MX hostname from DNS
   type: 'free' | 'business' | 'unknown';
   isFree: boolean;
@@ -61,8 +62,8 @@ mi.clearCache();
 
 ```ts
 {
-  imap: { host: string; port: number; secure: boolean };
-  smtp: { host: string; port: number; secure: boolean };
+  imap: { host: string; port: number; security: 'tls' | 'starttls' | 'none' };
+  smtp: { host: string; port: number; security: 'tls' | 'starttls' | 'none' };
   username: string;          // Resolved value, e.g. "user@gmail.com"
   usernameTemplate: string;  // Raw template: "%EMAILADDRESS%" | "%EMAILLOCALPART%" | "%EMAILDOMAIN%"
 }

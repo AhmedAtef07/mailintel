@@ -53,7 +53,7 @@ describe('lookupIspdb', () => {
     const { connection } = await lookupIspdb('example.com', { fetch });
 
     expect(connection).not.toBeNull();
-    expect(connection!.imap).toEqual({ host: 'imap.example.com', port: 993, secure: true });
+    expect(connection!.imap).toEqual({ host: 'imap.example.com', port: 993, security: 'tls' });
   });
 
   it('should extract SMTP settings from XML', async () => {
@@ -61,7 +61,7 @@ describe('lookupIspdb', () => {
     const { connection } = await lookupIspdb('example.com', { fetch });
 
     expect(connection).not.toBeNull();
-    expect(connection!.smtp).toEqual({ host: 'smtp.example.com', port: 465, secure: true });
+    expect(connection!.smtp).toEqual({ host: 'smtp.example.com', port: 465, security: 'tls' });
   });
 
   it('should extract username from XML', async () => {
@@ -71,12 +71,13 @@ describe('lookupIspdb', () => {
     expect(connection!.username).toBe('%EMAILADDRESS%');
   });
 
-  it('should handle STARTTLS as secure', async () => {
+  it('should correctly map STARTTLS socket type', async () => {
     const fetch = mockFetch(STARTTLS_XML);
     const { connection } = await lookupIspdb('example.com', { fetch });
 
-    expect(connection!.smtp.secure).toBe(true);
+    expect(connection!.smtp.security).toBe('starttls');
     expect(connection!.smtp.port).toBe(587);
+    expect(connection!.imap.security).toBe('tls');
   });
 
   it('should return null for malformed XML', async () => {

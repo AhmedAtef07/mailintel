@@ -4,8 +4,14 @@ import { lookupMx } from './dns';
 import { lookupIspdb } from './ispdb';
 import { KNOWN_DOMAINS } from './data/domains';
 import { KNOWN_MX } from './data/mx';
-import { KNOWN_PROVIDERS, REGIONAL_PROVIDERS } from './data/providers';
+import { KNOWN_PROVIDERS, PROVIDER_DISPLAY_NAMES, REGIONAL_PROVIDERS } from './data/providers';
 import { FREE_DOMAINS } from './data/free';
+
+function getDisplayName(provider: string | null, override?: string): string | null {
+  if (override) return override;
+  if (!provider) return null;
+  return PROVIDER_DISPLAY_NAMES[provider] ?? provider.charAt(0).toUpperCase() + provider.slice(1);
+}
 
 function resolveUsername(template: string, email: string, domain: string): string {
   return template
@@ -53,6 +59,7 @@ export async function mailintelCore(
       email,
       domain,
       provider: override.provider,
+      providerDisplayName: getDisplayName(override.provider, override.providerDisplayName),
       mx: null,
       type: FREE_DOMAINS.has(domain) ? 'free' : 'business',
       isFree: FREE_DOMAINS.has(domain),
@@ -79,6 +86,7 @@ export async function mailintelCore(
       email,
       domain,
       provider: knownProvider,
+      providerDisplayName: getDisplayName(knownProvider),
       mx: null,
       type: FREE_DOMAINS.has(domain) ? 'free' : 'business',
       isFree: FREE_DOMAINS.has(domain),
@@ -115,6 +123,7 @@ export async function mailintelCore(
       email,
       domain,
       provider: null,
+      providerDisplayName: null,
       mx: null,
       type: 'unknown',
       isFree: false,
@@ -139,6 +148,7 @@ export async function mailintelCore(
           email,
           domain,
           provider: override.provider,
+          providerDisplayName: getDisplayName(override.provider, override.providerDisplayName),
           mx: primaryMx,
           type: FREE_DOMAINS.has(domain) ? 'free' : 'business',
           isFree: FREE_DOMAINS.has(domain),
@@ -210,6 +220,7 @@ export async function mailintelCore(
       email,
       domain,
       provider: mxProvider,
+      providerDisplayName: getDisplayName(mxProvider),
       mx: primaryMx,
       type: FREE_DOMAINS.has(domain) ? 'free' : 'business',
       isFree: FREE_DOMAINS.has(domain),
@@ -241,6 +252,7 @@ export async function mailintelCore(
     email,
     domain,
     provider: null,
+    providerDisplayName: null,
     mx: primaryMx,
     type: FREE_DOMAINS.has(domain) ? 'free' : 'business',
     isFree: FREE_DOMAINS.has(domain),
@@ -260,6 +272,7 @@ function emptyResult(email: string, domain: string): MailintelResult {
     email,
     domain,
     provider: null,
+    providerDisplayName: null,
     mx: null,
     type: 'unknown',
     isFree: false,

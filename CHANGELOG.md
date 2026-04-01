@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0
+
+- **BREAKING: `secure: boolean` replaced with `security: 'tls' | 'starttls' | 'none'`** on `ServerConfig` - explicit connection security instead of ambiguous boolean
+- **BREAKING: Fix ISPDB STARTTLS mapping** - STARTTLS was incorrectly mapped to `secure: true`, now correctly returns `security: 'starttls'`
+- **`providerDisplayName`** field on results - "Google Workspace", "Microsoft 365", "Zoho Mail", etc.
+- Display names for all ~22 known providers, with auto-capitalization fallback for unknown ones
+
 ## 0.3.0
 
 - **TypeScript overloads**: `mailintel(string)` returns `Promise<MailintelResult>`, `mailintel(string[])` returns `Promise<MailintelResult[]>` - no more `Array.isArray()` checks

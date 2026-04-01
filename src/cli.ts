@@ -124,7 +124,8 @@ function formatResult(result: MailintelResult): string {
   lines.push('');
 
   if (result.provider) {
-    lines.push(`  provider      ${cyan(result.provider)}`);
+    const name = result.providerDisplayName ?? result.provider;
+    lines.push(`  provider      ${cyan(name)}${result.providerDisplayName ? dim(` (${result.provider})`) : ''}`);
   } else {
     lines.push(`  provider      ${dim('unknown')}`);
   }
@@ -144,8 +145,8 @@ function formatResult(result: MailintelResult): string {
   if (result.connection) {
     const { imap, smtp, username } = result.connection;
     lines.push('');
-    lines.push(`  ${bold('IMAP')}  ${imap.host}:${imap.port}  ${imap.secure ? green('SSL') : yellow('STARTTLS')}`);
-    lines.push(`  ${bold('SMTP')}  ${smtp.host}:${smtp.port}  ${smtp.secure ? green('SSL') : yellow('STARTTLS')}`);
+    lines.push(`  ${bold('IMAP')}  ${imap.host}:${imap.port}  ${imap.security === 'tls' ? green('TLS') : imap.security === 'starttls' ? yellow('STARTTLS') : red('none')}`);
+    lines.push(`  ${bold('SMTP')}  ${smtp.host}:${smtp.port}  ${smtp.security === 'tls' ? green('TLS') : smtp.security === 'starttls' ? yellow('STARTTLS') : red('none')}`);
     lines.push(`  ${bold('Username')}  ${dim(username)}`);
   } else {
     lines.push('');

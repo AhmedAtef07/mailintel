@@ -1,6 +1,6 @@
 {
   "name": "mailintel",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Email domain intelligence. Takes any email address, resolves the provider, returns IMAP/SMTP connection settings. Supports custom domains via MX lookups.",
   "author": "Ahmed Atef <ahmed@atef.dev>",
   "license": "MIT",

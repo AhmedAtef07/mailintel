@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.1
+
+- Switch releases to **npm trusted publishing (OIDC)** from GitHub Actions; no long-lived publish token.
+- Harden `.gitignore` for `.env.*` files (PR #1), keeping `.env.example` tracked.
+- No runtime API changes; this is the 0.5.0 correctness release plus release-pipeline fixes.
+
 ## 0.5.0
 
 - **Fix `hasMx` for known domains** - built-in domains no longer report `false` just because the DNS step was skipped. `hasMx` now means "known or observed to accept mail".

@@ -8,7 +8,7 @@ export const KNOWN_PROVIDERS: Record<string, RawConnectionInfo> = {
   },
   microsoft: {
     imap: { host: 'outlook.office365.com', port: 993, security: 'tls' },
-    smtp: { host: 'smtp-mail.outlook.com', port: 587, security: 'starttls' },
+    smtp: { host: 'smtp.office365.com', port: 587, security: 'starttls' },
     username: '%EMAILADDRESS%',
   },
   zoho: {
@@ -81,6 +81,26 @@ export const KNOWN_PROVIDERS: Record<string, RawConnectionInfo> = {
     smtp: { host: 'smtp.dreamhost.com', port: 465, security: 'tls' },
     username: '%EMAILADDRESS%',
   },
+  gmx: {
+    imap: { host: 'imap.gmx.com', port: 993, security: 'tls' },
+    smtp: { host: 'mail.gmx.com', port: 587, security: 'starttls' },
+    username: '%EMAILADDRESS%',
+  },
+  webde: {
+    imap: { host: 'imap.web.de', port: 993, security: 'tls' },
+    smtp: { host: 'smtp.web.de', port: 587, security: 'starttls' },
+    username: '%EMAILADDRESS%',
+  },
+  mailcom: {
+    imap: { host: 'imap.mail.com', port: 993, security: 'tls' },
+    smtp: { host: 'smtp.mail.com', port: 587, security: 'starttls' },
+    username: '%EMAILADDRESS%',
+  },
+  mailru: {
+    imap: { host: 'imap.mail.ru', port: 993, security: 'tls' },
+    smtp: { host: 'smtp.mail.ru', port: 465, security: 'tls' },
+    username: '%EMAILADDRESS%',
+  },
 };
 
 export const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
@@ -114,5 +134,31 @@ export const REGIONAL_PROVIDERS: Record<string, Record<string, { imapHost: strin
     'zoho.in': { imapHost: 'imappro.zoho.in', smtpHost: 'smtppro.zoho.in' },
     'zoho.com.au': { imapHost: 'imappro.zoho.com.au', smtpHost: 'smtppro.zoho.com.au' },
     'zoho.jp': { imapHost: 'imappro.zoho.jp', smtpHost: 'smtppro.zoho.jp' },
+    'zohocloud.ca': { imapHost: 'imappro.zohocloud.ca', smtpHost: 'smtppro.zohocloud.ca' },
+    'zoho.com.cn': { imapHost: 'imappro.zoho.com.cn', smtpHost: 'smtppro.zoho.com.cn' },
   },
+  gmx: {
+    'gmx.de': { imapHost: 'imap.gmx.net', smtpHost: 'mail.gmx.net' },
+    'gmx.net': { imapHost: 'imap.gmx.net', smtpHost: 'mail.gmx.net' },
+  },
+};
+
+/** Microsoft consumer domains use legacy Outlook.com hosts; business tenants use office365.com. */
+export const CONSUMER_MICROSOFT_DOMAINS = new Set([
+  'outlook.com',
+  'hotmail.com',
+  'live.com',
+  'msn.com',
+  'hotmail.co.uk',
+  'hotmail.fr',
+  'outlook.co.uk',
+]);
+
+/** Providers that intentionally do not expose standard IMAP/SMTP. */
+export const PROVIDER_NOTES: Record<string, string> = {
+  tutanota:
+    'Tuta does not offer standard IMAP/SMTP access. Use the Tuta apps or its desktop client instead.',
+  hey: 'HEY does not support IMAP, POP or SMTP. Use the HEY apps, forwarding, or its sending-as feature.',
+  protonmail:
+    'Proton Mail requires Proton Mail Bridge. The returned hosts point at the local Bridge, not a hosted IMAP service.',
 };

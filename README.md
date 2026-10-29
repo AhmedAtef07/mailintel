@@ -16,19 +16,19 @@ npm install mailintel
 import { mailintel } from 'mailintel';
 
 // With an email - username is resolved automatically
-const result = await mailintel('ceo@acme-corp.com');
+const result = await mailintel('ceo@acme.dev');
 // result.provider             => 'google'
-// result.connection.imap      => { host: 'imap.gmail.com', port: 993, secure: true }
-// result.connection.username  => 'ceo@acme-corp.com'
+// result.connection.imap      => { host: 'imap.gmail.com', port: 993, security: 'tls' }
+// result.connection.username  => 'ceo@acme.dev'
 // result.type                 => 'business'
 // result.confidence           => 'high'
 
 // With just a domain - same result, username stays as template
-const result = await mailintel('acme-corp.com');
+const result = await mailintel('acme.dev');
 // result.connection.username  => '%EMAILADDRESS%'
 
 // Multiple inputs at once
-const results = await mailintel(['ceo@acme-corp.com', 'example.com', 'user@gmail.com']);
+const results = await mailintel(['ceo@acme.dev', 'example.com', 'user@gmail.com']);
 ```
 
 <details>
@@ -36,25 +36,25 @@ const results = await mailintel(['ceo@acme-corp.com', 'example.com', 'user@gmail
 
 ```json
 {
-  "email": "ceo@acme-corp.com",
-  "domain": "acme-corp.com",
+  "email": "ceo@acme.dev",
+  "domain": "acme.dev",
   "provider": "google",
   "providerDisplayName": "Google Workspace",
-  "mx": "smtp.google.com",
+  "mx": "aspmx.l.google.com",
   "type": "business",
   "isFree": false,
   "hasMx": true,
   "connection": {
     "imap": { "host": "imap.gmail.com", "port": 993, "security": "tls" },
     "smtp": { "host": "smtp.gmail.com", "port": 465, "security": "tls" },
-    "username": "ceo@acme-corp.com",
+    "username": "ceo@acme.dev",
     "usernameTemplate": "%EMAILADDRESS%"
   },
   "confidence": "high",
   "source": "mx-lookup",
   "raw": {
-    "mx": [{ "priority": 1, "exchange": "smtp.google.com" }],
-    "dns": { "Status": 0, "Answer": [{ "name": "acme-corp.com", "type": 15, "TTL": 300, "data": "1 smtp.google.com." }] },
+    "mx": [{ "priority": 1, "exchange": "aspmx.l.google.com" }],
+    "dns": { "Status": 0, "Answer": [{ "name": "acme.dev", "type": 15, "TTL": 300, "data": "1 aspmx.l.google.com." }] },
     "ispdb": null
   }
 }
@@ -76,8 +76,8 @@ const lookup = createMailintel({
   providers: {
     'megacorp.io': {
       provider: 'internal',
-      imap: { host: 'imap.megacorp.io', port: 993, secure: true },
-      smtp: { host: 'smtp.megacorp.io', port: 465, secure: true },
+      imap: { host: 'imap.megacorp.io', port: 993, security: 'tls' },
+      smtp: { host: 'smtp.megacorp.io', port: 465, security: 'tls' },
     },
   },
 });
@@ -102,30 +102,30 @@ lookup.clearCache();
 ## CLI
 
 ```bash
-npx mailintel ceo@acme-corp.com
+npx mailintel ceo@acme.dev
 ```
 
 ```
-ceo@acme-corp.com
+ceo@acme.dev
 
   provider      google
-  domain        acme-corp.com
+  domain        acme.dev
   type          business
   confidence    high
-  mx            smtp.google.com
+  mx            aspmx.l.google.com
   source        mx-lookup
 
   IMAP  imap.gmail.com:993  SSL
   SMTP  smtp.gmail.com:465  SSL
-  Username  ceo@acme-corp.com
+  Username  ceo@acme.dev
 ```
 
 Supports multiple emails, domain-only lookups, and JSON output:
 
 ```bash
 mailintel user@gmail.com admin@example.com    # multiple emails
-mailintel acme-corp.com                            # domain-only lookup
-mailintel ceo@acme-corp.com --json               # machine-readable JSON
+mailintel acme.dev                            # domain-only lookup
+mailintel ceo@acme.dev --json               # machine-readable JSON
 ```
 
 ### CLI options
@@ -161,14 +161,14 @@ At most 2 HTTP requests per uncached lookup - one DNS query and one ISPDB fetch.
 
 ### How it gets the data
 
-Every email domain has **MX records** in DNS that say which mail server handles its email. A Google Workspace domain points to `smtp.google.com`, another might point to `mx.zoho.com` (Zoho).
+Every email domain has **MX records** in DNS that say which mail server handles its email. A Google Workspace domain points to `aspmx.l.google.com`, another might point to `mx.zoho.com` (Zoho).
 
 Mailintel queries these using **DNS-over-HTTPS** - plain HTTPS requests to public DNS resolvers, not system-level DNS calls. Works in serverless functions, edge runtimes, and anywhere `fetch` is available. No native modules, no UDP sockets, no special permissions.
 
 | Service | URL | What it returns |
 |---------|-----|-----------------|
 | **Cloudflare DNS** (default) | `cloudflare-dns.com/dns-query?name=example.com&type=MX` * | MX records - which mail server handles the domain |
-| **Google DNS** (alternative) | `dns.google/resolve?name=acme-corp.com&type=MX` | Same MX records, different resolver |
+| **Google DNS** (alternative) | `dns.google/resolve?name=acme.dev&type=MX` | Same MX records, different resolver |
 | **Thunderbird ISPDB** (fallback) | `autoconfig.thunderbird.net/v1.1/{domain}` | IMAP/SMTP settings from Mozilla's open database |
 
 \* Requires an `Accept: application/dns-json` header. Opening this URL in a browser returns an HTML page, not JSON. Mailintel sets this header automatically.
@@ -185,16 +185,18 @@ interface MailintelResult {
   domain: string;
   provider: string | null;       // 'google', 'microsoft', 'zoho', etc.
   providerDisplayName: string | null; // 'Google Workspace', 'Microsoft 365', etc.
-  mx: string | null;             // primary MX hostname
+  mx: string | null;             // primary MX hostname (null when the DNS step was skipped)
   type: 'free' | 'business' | 'unknown';
   isFree: boolean;
-  hasMx: boolean;
+  hasMx: boolean;                // known/observed to accept mail
+  mxChecked: boolean;            // true only when DNS actually ran and returned MX records
   connection: {                  // null when status is not 'ok'
     imap: { host: string; port: number; security: 'tls' | 'starttls' | 'none' };
     smtp: { host: string; port: number; security: 'tls' | 'starttls' | 'none' };
     username: string;            // resolved: 'user@example.com'
     usernameTemplate: string;    // raw template: '%EMAILADDRESS%'
   } | null;
+  note?: string;                 // why a provider has no standard IMAP/SMTP (Tuta, HEY, Proton Bridge)
   status: 'ok' | 'no-mx-records' | 'unknown-provider' | 'lookup-disabled';
   confidence: 'high' | 'medium' | 'low';
   source: 'override' | 'known-domain' | 'mx-lookup' | null;
@@ -227,7 +229,13 @@ All built-in providers use `%EMAILADDRESS%`. The ISPDB fallback may return any o
 
 ## Supported providers
 
-Google, Microsoft, Yahoo, Zoho (with EU/IN/AU/JP regional variants), iCloud, Fastmail, ProtonMail, GoDaddy, Titan, OVH, IONOS, Hostinger, Yandex, AOL, Rackspace, DreamHost - plus any provider discoverable via MX records or Thunderbird ISPDB.
+Google, Microsoft (consumer Outlook.com and business Microsoft 365 endpoints), Yahoo, Zoho (global, EU, IN, AU, JP, CA and CN), iCloud, Fastmail, ProtonMail (Bridge), GoDaddy, Titan, OVH, IONOS, Hostinger, Yandex, AOL, Rackspace, DreamHost, GMX, WEB.DE, mail.com and Mail.ru - plus any provider discoverable via MX records or Thunderbird ISPDB.
+
+Tuta and HEY intentionally do not expose standard IMAP/SMTP; results for those domains have `connection: null`, a `note` explaining why, and `status: 'unknown-provider'`. ProtonMail results point at the local Proton Mail Bridge.
+
+### Authentication caveats
+
+The library resolves endpoints, not credentials. Microsoft 365 requires OAuth2 for IMAP/SMTP (basic auth is disabled for Exchange Online). Google Workspace ended password-only access on March 14, 2025; OAuth is required, with app passwords as an exception where enabled. Gmail, Yahoo, iCloud, Fastmail, Yandex, GMX, WEB.DE, mail.com and Mail.ru generally require an app password when 2FA is on.
 
 ## Contributing
 

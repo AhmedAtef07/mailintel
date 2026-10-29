@@ -14,6 +14,8 @@ export const KNOWN_MX: Record<string, string> = {
   'zoho.in': 'zoho',
   'zoho.com.au': 'zoho',
   'zoho.jp': 'zoho',
+  'zohocloud.ca': 'zoho',
+  'zoho.com.cn': 'zoho',
 
   // Yahoo
   'yahoodns.net': 'yahoo',
@@ -40,6 +42,11 @@ export const KNOWN_MX: Record<string, string> = {
   'migadu.com': 'migadu',
   'improvmx.com': 'improvmx',
   'forwardemail.net': 'forwardemail',
+  'gmx.com': 'gmx',
+  'gmx.net': 'gmx',
+  'web.de': 'webde',
+  'mail.com': 'mailcom',
+  'mail.ru': 'mailru',
 
   // Sending-only (no IMAP)
   'mailgun.org': 'mailgun',

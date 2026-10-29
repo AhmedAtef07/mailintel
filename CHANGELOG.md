@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.0
+
+- **Fix `hasMx` for known domains** - built-in domains no longer report `false` just because the DNS step was skipped. `hasMx` now means "known or observed to accept mail".
+- **Add `mxChecked`** - `true` only when an MX DNS query actually ran and returned records. Use it to distinguish known-domain shortcuts from verified DNS.
+- **Fix Microsoft 365 endpoints** - the default is now the business pair (`outlook.office365.com` / `smtp.office365.com`); consumer Outlook.com/Hotmail domains still use `imap-mail.outlook.com` / `smtp-mail.outlook.com`.
+- **Apply Zoho regions to known domains** - `zoho.eu`, `.in`, `.com.au`, `.jp`, `.zohocloud.ca` and `.zoho.com.cn` no longer return the global `.com` host. Added Canada and China.
+- **Add GMX, WEB.DE, mail.com and Mail.ru settings** - including GMX's German endpoints (`imap.gmx.net` / `mail.gmx.net`).
+- **Add `note` for non-standard providers** - Tuta and HEY explain that they do not expose IMAP/SMTP; Proton explains the local Bridge. No guessed hosts.
+- **Tests** - cover known-domain `hasMx`, Microsoft consumer/business split, Zoho regions, GMX variants, missing providers and provider notes.
+
 ## 0.4.0
 
 - **BREAKING: `secure: boolean` replaced with `security: 'tls' | 'starttls' | 'none'`** on `ServerConfig` - explicit connection security instead of ambiguous boolean

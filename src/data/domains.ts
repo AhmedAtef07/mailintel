@@ -28,6 +28,8 @@ export const KNOWN_DOMAINS: Record<string, string> = {
   'zoho.in': 'zoho',
   'zoho.com.au': 'zoho',
   'zoho.jp': 'zoho',
+  'zohocloud.ca': 'zoho',
+  'zoho.com.cn': 'zoho',
 
   // iCloud
   'icloud.com': 'icloud',

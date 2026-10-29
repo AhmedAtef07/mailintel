@@ -15,10 +15,10 @@ import { mailintel } from 'mailintel';
 const result = await mailintel('user@gmail.com');
 
 // Array of emails - returns MailintelResult[]
-const results = await mailintel(['user@gmail.com', 'ceo@acme-corp.com']);
+const results = await mailintel(['user@gmail.com', 'ceo@acme.dev']);
 
 // Domain only (no email) - returns MailintelResult, username stays as template
-const result = await mailintel('acme-corp.com');
+const result = await mailintel('acme.dev');
 ```
 
 ## Factory (custom options)
@@ -50,7 +50,9 @@ mi.clearCache();
   type: 'free' | 'business' | 'unknown';
   isFree: boolean;
   hasMx: boolean;
+  mxChecked: boolean;       // true only when DNS actually ran
   connection: ConnectionInfo | null;  // null when status is not "ok"
+  note?: string;             // why a provider has no standard IMAP/SMTP
   status: 'ok' | 'no-mx-records' | 'unknown-provider' | 'lookup-disabled';
   confidence: 'high' | 'medium' | 'low';
   source: 'override' | 'known-domain' | 'mx-lookup' | null;

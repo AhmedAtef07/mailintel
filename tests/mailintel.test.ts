@@ -57,6 +57,9 @@ describe('mailintel', () => {
     expect(result.status).toBe('ok');
     expect(result.confidence).toBe('high');
     expect(result.source).toBe('known-domain');
+    expect(result.hasMx).toBe(true);
+    expect(result.mxChecked).toBe(false);
+    expect(result.mx).toBeNull();
     expect(result.providerDisplayName).toBe('Google Workspace');
     expect(result.connection).not.toBeNull();
     expect(result.connection!.imap.host).toBe('imap.gmail.com');
@@ -73,6 +76,7 @@ describe('mailintel', () => {
 
     expect(result.provider).toBe('zoho');
     expect(result.hasMx).toBe(true);
+    expect(result.mxChecked).toBe(true);
     expect(result.mx).toBe('mx.zoho.com');
     expect(result.status).toBe('ok');
     expect(result.source).toBe('mx-lookup');
@@ -117,6 +121,7 @@ describe('mailintel', () => {
     expect(result.provider).toBeNull();
     expect(result.connection).toBeNull();
     expect(result.hasMx).toBe(false);
+    expect(result.mxChecked).toBe(true);
     expect(result.type).toBe('unknown');
     expect(result.status).toBe('no-mx-records');
     expect(result.confidence).toBe('low');
@@ -150,6 +155,8 @@ describe('mailintel', () => {
     expect(results).toHaveLength(2);
     expect(results[0].provider).toBe('google');
     expect(results[1].provider).toBe('microsoft');
+    expect(results[1].connection!.imap.host).toBe('imap-mail.outlook.com');
+    expect(results[1].connection!.smtp.host).toBe('smtp-mail.outlook.com');
   });
 
   it('should use user domain override first', async () => {
@@ -201,6 +208,92 @@ describe('mailintel', () => {
     expect(result.status).toBe('ok');
     expect(result.connection!.imap.host).toBe('imappro.zoho.eu');
     expect(result.connection!.smtp.host).toBe('smtppro.zoho.eu');
+  });
+
+  it('should use the Zoho region for a known regional domain without DNS', async () => {
+    const fetch = vi.fn();
+    const mi = createMailintel({ fetch });
+
+    for (const [domain, imap, smtp] of [
+      ['zoho.eu', 'imappro.zoho.eu', 'smtppro.zoho.eu'],
+      ['zoho.in', 'imappro.zoho.in', 'smtppro.zoho.in'],
+      ['zoho.com.au', 'imappro.zoho.com.au', 'smtppro.zoho.com.au'],
+      ['zoho.jp', 'imappro.zoho.jp', 'smtppro.zoho.jp'],
+      ['zohocloud.ca', 'imappro.zohocloud.ca', 'smtppro.zohocloud.ca'],
+      ['zoho.com.cn', 'imappro.zoho.com.cn', 'smtppro.zoho.com.cn'],
+    ] as const) {
+      const result = await mi(`user@${domain}`);
+      expect(result.provider).toBe('zoho');
+      expect(result.connection!.imap.host).toBe(imap);
+      expect(result.connection!.smtp.host).toBe(smtp);
+    }
+
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('should use business endpoints for Microsoft 365 custom domains', async () => {
+    const fetch = mockFetchForMx(['10 contoso-com.mail.protection.outlook.com.']);
+    const mi = createMailintel({ fetch });
+    const result = await mi('user@contoso.com');
+
+    expect(result.provider).toBe('microsoft');
+    expect(result.mxChecked).toBe(true);
+    expect(result.connection!.imap.host).toBe('outlook.office365.com');
+    expect(result.connection!.smtp.host).toBe('smtp.office365.com');
+    expect(result.connection!.smtp.security).toBe('starttls');
+  });
+
+  it('should return settings for GMX, WEB.DE, mail.com and Mail.ru', async () => {
+    const fetch = vi.fn();
+    const mi = createMailintel({ fetch });
+
+    const gmx = await mi('user@gmx.com');
+    expect(gmx.provider).toBe('gmx');
+    expect(gmx.connection!.imap.host).toBe('imap.gmx.com');
+    expect(gmx.connection!.smtp.host).toBe('mail.gmx.com');
+
+    const gmxDe = await mi('user@gmx.de');
+    expect(gmxDe.provider).toBe('gmx');
+    expect(gmxDe.connection!.imap.host).toBe('imap.gmx.net');
+    expect(gmxDe.connection!.smtp.host).toBe('mail.gmx.net');
+
+    const webde = await mi('user@web.de');
+    expect(webde.provider).toBe('webde');
+    expect(webde.connection!.imap.host).toBe('imap.web.de');
+    expect(webde.connection!.smtp.host).toBe('smtp.web.de');
+
+    const mailcom = await mi('user@mail.com');
+    expect(mailcom.provider).toBe('mailcom');
+    expect(mailcom.connection!.imap.host).toBe('imap.mail.com');
+    expect(mailcom.connection!.smtp.host).toBe('smtp.mail.com');
+
+    const mailru = await mi('user@mail.ru');
+    expect(mailru.provider).toBe('mailru');
+    expect(mailru.connection!.imap.host).toBe('imap.mail.ru');
+    expect(mailru.connection!.smtp.host).toBe('smtp.mail.ru');
+
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('should explain providers without standard IMAP/SMTP instead of guessing', async () => {
+    const fetch = vi.fn();
+    const mi = createMailintel({ fetch });
+
+    for (const domain of ['tutanota.com', 'hey.com']) {
+      const result = await mi(`user@${domain}`);
+      expect(result.connection).toBeNull();
+      expect(result.status).toBe('unknown-provider');
+      expect(result.note).toBeTruthy();
+    }
+  });
+
+  it('should note that Proton requires the local Bridge', async () => {
+    const fetch = vi.fn();
+    const mi = createMailintel({ fetch });
+    const result = await mi('user@proton.me');
+
+    expect(result.connection!.imap.host).toBe('127.0.0.1');
+    expect(result.note).toContain('Bridge');
   });
 
   it('should cache results by domain', async () => {

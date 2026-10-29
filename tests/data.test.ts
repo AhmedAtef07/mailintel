@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { KNOWN_DOMAINS } from '../src/data/domains';
 import { KNOWN_MX } from '../src/data/mx';
-import { KNOWN_PROVIDERS } from '../src/data/providers';
+import { KNOWN_PROVIDERS, PROVIDER_NOTES } from '../src/data/providers';
 import { FREE_DOMAINS } from '../src/data/free';
 
 describe('data maps consistency', () => {
@@ -12,12 +12,18 @@ describe('data maps consistency', () => {
   });
 
   it('every KNOWN_DOMAINS provider should have KNOWN_PROVIDERS entry', () => {
-    const providersWithoutSettings = new Set(['mailru', 'gmx', 'webde', 'tutanota', 'hey', 'mailcom']);
+    const providersWithoutSettings = new Set(['tutanota', 'hey']);
 
     for (const [domain, provider] of Object.entries(KNOWN_DOMAINS)) {
       if (!providersWithoutSettings.has(provider)) {
         expect(KNOWN_PROVIDERS, `Provider "${provider}" for domain "${domain}" missing from KNOWN_PROVIDERS`).toHaveProperty(provider);
       }
+    }
+  });
+
+  it('providers without standard IMAP/SMTP should explain why', () => {
+    for (const provider of ['tutanota', 'hey']) {
+      expect(PROVIDER_NOTES, `Provider "${provider}" needs a note`).toHaveProperty(provider);
     }
   });
 

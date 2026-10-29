@@ -37,9 +37,17 @@ export interface MailintelResult {
   /** "free" for consumer providers (Gmail, Yahoo), "business" for custom/work domains, "unknown" if unresolved */
   type: 'free' | 'business' | 'unknown';
   isFree: boolean;
+  /**
+   * True when the domain is known or observed to accept mail.
+   * Check `mxChecked` to distinguish a DNS-confirmed answer from a known-domain shortcut.
+   */
   hasMx: boolean;
+  /** True only when an MX DNS query actually ran and returned records. */
+  mxChecked: boolean;
   /** IMAP/SMTP connection settings. null when status is not "ok" */
   connection: ConnectionInfo | null;
+  /** Human-readable caveat for providers without standard IMAP/SMTP, or for Bridge-based setups. */
+  note?: string;
   /**
    * Detection outcome.
    * - "ok": connection settings found successfully

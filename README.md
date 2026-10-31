@@ -237,6 +237,21 @@ Tuta and HEY intentionally do not expose standard IMAP/SMTP; results for those d
 
 The library resolves endpoints, not credentials. Microsoft 365 requires OAuth2 for IMAP/SMTP (basic auth is disabled for Exchange Online). Google Workspace ended password-only access on March 14, 2025; OAuth is required, with app passwords as an exception where enabled. Gmail, Yahoo, iCloud, Fastmail, Yandex, GMX, WEB.DE, mail.com and Mail.ru generally require an app password when 2FA is on.
 
+## Releasing
+
+Releases are tag-driven and use npm trusted publishing (OIDC) — no long-lived npm token.
+
+```bash
+npm version patch   # or minor / major
+# update CHANGELOG.md
+git add -A && git commit -m "chore: release vX.Y.Z"
+git push
+git tag -a vX.Y.Z -m "Release vX.Y.Z"
+git push origin vX.Y.Z
+```
+
+The tag runs `.github/workflows/publish.yml`, which builds, tests, publishes to npm, and creates the matching GitHub release. The workflow filename is part of the npm trusted-publisher configuration, so do not rename it without updating npm.
+
 ## Contributing
 
 Missing a provider or found incorrect settings? [Open an issue](https://github.com/AhmedAtef07/mailintel/issues) or submit a PR.

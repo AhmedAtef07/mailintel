@@ -1,5 +1,7 @@
 name: Publish to npm
 
+# Trusted publisher on npm is configured for THIS exact filename (publish.yml).
+# Renaming this file breaks publishing until the npm trusted publisher is recreated.
 on:
   push:
     tags:
@@ -10,7 +12,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       id-token: write
 
     steps:
@@ -29,3 +31,14 @@ jobs:
 
       - name: Publish to npm
         run: npm publish --access public --ignore-scripts
+
+      - name: Create GitHub release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || \
+            gh release create "$GITHUB_REF_NAME" \
+              --title "$GITHUB_REF_NAME" \
+              --generate-notes \
+              --verify-tag
